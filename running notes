@@ -1,0 +1,4 @@
+Installed PHREEQCCom 32bit and 64 for windows 64
+Installed PHREEQPy: (Scriptable)
+
+On windows 64bit may need to run C:\Python27\Scripts\pywin32_postinstall.py -install  as administrator (Silly Python)
