@@ -19,7 +19,78 @@ import os, sys
 import pythoncom,pywintypes
 from win32com.client import Dispatch
 from Exceptions import DatabaseNotConnectedException
+import datetime
 
+# Module level globals.
+CUSTOM_MODULE_VERSION = 0.1         # module version --- REQUIRED
+LOG_FILE_NAME = "TestLog.txt"       # log file name --- REQUIRED
+PHREEQC = None
+
+
+def SetStuffUp():
+    """
+    Required function for Linkage.py to link the GoldSim technologies package an IPHREEQC COM connection
+    :return:
+        Integer: 0 = good; 1 = something went wrong
+    """
+    global PHREEQC
+    global LOG_FILE_NAME
+    db_path = "database/phreeqc.dat"
+    with open(LOG_FILE_NAME, 'w', 0) as Log:
+        try:
+            PHREEQC = Dispatch('IPhreeqcCOM.Object')
+        except pythoncom.ole_error:
+            Log.write("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
+            return 1
+        try:
+            PHREEQC.LoadDatabase(db_path) # TODO Make more generic maybe with a config file.
+        except pywintypes.com_error:
+            Log.write("Error Could not load database file %s\n" % db_path)
+            return 1
+        Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
+    return 0
+
+def WrapUpLogFile(logfilename):
+    """
+    Required to end off the log file
+    :param logfilename: the name of the logfile
+    :return: None
+    """
+
+    global LOG_FILE_NAME
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write("GoldQC.py completed successfully at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
+    return
+
+def MyCustomCalculations(PyInputList):
+    """
+    Required function for completing the PHREEQC side of the calculations first processes the input from GoldSim into
+    a PHREEQC input/SelectedOutput string then calls process_input to have it processed by PHREEQC
+    :param PyInputList: a list of values provided from GoldSim for processing
+    :return: RET_VAR_LIST list of output values in the form GoldSim Expects them to be returned.
+    """
+    #imports
+    from CustomModule import RET_VAR_LIST
+
+
+
+def process_input(input_string):
+    """
+    Runs a selected input string on the PHREEQC connection and returns the output
+    :param input_string: input for simulation
+    :return: @see Dispatch.getSelectedOutputArray()
+    """
+
+    if not PHREEQC:
+        raise DatabaseNotConnectedException("PHREEQC database not connected")
+        return
+    PHREEQC.RunString(input_string)
+    output = PHREEQC.GetSelectedOutputArray()
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write("Output-----------------\n\n")
+        Log.write(output)
+        Log.write("End-of-Output----------\n\n")
+    return output
 
 class IPhreeqcConnection:
 
@@ -68,24 +139,6 @@ class IPhreeqcConnection:
         selected_output += code
         return selected_output
 
-    def process_input(self, input_string):
-        """
-        Runs a selected input string on the database and returns the output
-        :param input_string: input for simulation
-        :return: @see Dispatch.getSelectedOutputArray()
-        """
-        if not self.dbase:
-            raise DatabaseNotConnectedException("PHREEQC database not connected")
-            return
-        self.dbase.RunString(input_string)
-
-        components = self.dbase.GetComponentList()
-        # selected_output = self.make_selected_output(components)
-        # print(selected_output)
-        # i = self.dbase.RunString(selected_output)
-        print self.dbase.RowCount
-        output = self.dbase.GetSelectedOutputArray()
-        return output
 
 if __name__ == '__main__':
     # TESTING ONLY TODO REMOVE
