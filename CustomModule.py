@@ -211,7 +211,7 @@ either expressed or implied, of the FreeBSD Project.
 """
 #===========================================================================
 # imports
-import TestModule as CImp
+import GoldQC as CImp
 #BAD_NAME = "
 #===========================================================================
 # MODULE GLOBAL parameters/values.
@@ -271,10 +271,10 @@ GS_TIMESERIES_TYPE_IND = 2  # index in array where time series type goes
 #           NL[2] = the description for this item
 #           NL[3] = the time series type; only for time series
 
-""" GOLDSIM PROVIDED
+"""
 IN_VAR_LIST = [ [ 1, DBL_TYPER, "Test 1" ] ]
 """
-""" GOLDSIM PROVIDED
+"""
 IN_VAR_LIST = [ [ 1, DBL_TYPER, "Start Time (date time)" ],
                 [ [3,4], MATRIX_TYPER, "Matrix" ],
                 [ 4, VECTOR_TYPER, "Vector" ],
@@ -283,8 +283,7 @@ IN_VAR_LIST = [ [ 1, DBL_TYPER, "Start Time (date time)" ],
                 [ 12, TS_TYPER, "Elapsed Time Series", ELAPSED_TIME ],
                 [ 1, DBL_TYPER, "Time Series Multiplier" ] ]
 """
-# Mine for testing GoldQC
-IN_VAR_LIST = [[VECTOR_TYPER, "Input_Vector"]]
+IN_VAR_LIST = [ [7,VECTOR_TYPER,"inputVector" ] ]
 
 #---------------------------------------------------------------------------
 # RET_VAR_LIST provides the list of return variables to GoldSim. This must
@@ -310,11 +309,10 @@ RET_VAR_LIST = [ [ 3, LUTABLE_1D_TYPER, "1D Lookup Table" ],
                  [ 12, TS_TYPER, "Calendar Time Series", CALENDAR_TIME ],
                  [ [4,3], LUTABLE_2D_TYPER, "2D Lookup Table" ],
                  [ 12, VECTOR_TYPER, "Vector" ],
-                 [ 1, DBL_TYPER, "Number of Inputs" ] ]
+                  [ 1, DBL_TYPER, "Number of Inputs" ] ]
 """
-# Mine for Testing GoldQC
-RET_VAR_LIST = [[ 1, [VECTOR_TYPER, "Output_Vector" ]]
 
+RET_VAR_LIST = [ [7,VECTOR_TYPER,"outputVector" ] ]
 #---------------------------------------------------------------------------
 # set the debug level. 0 = no output; 1 = will output to file input argument
 # list and output return list.
