@@ -62,17 +62,19 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 """
 
-#===========================================================================
+# ===========================================================================
 # Module level globals.
-CUSTOM_MODULE_VERSION = 0.1         # module version --- REQUIRED
-LOG_FILE_NAME = "TestLog.txt"       # log file name --- REQUIRED
+CUSTOM_MODULE_VERSION = 0.1  # module version --- REQUIRED
+LOG_FILE_NAME = "TestLog.txt"  # log file name --- REQUIRED
 PHREEQC = None
 STEP = 0
-#BAD_NAME = "
-#===========================================================================
+
+
+# BAD_NAME = "
+# ===========================================================================
 # functions
 
-def SetStuffUp( ):
+def SetStuffUp():
     """
     Required function from CustomModule.py. Does whatever is needed in terms
     of set-up. Here just writes the initial entry to the log file.
@@ -102,7 +104,7 @@ def SetStuffUp( ):
             Log.write("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
         return 1
     try:
-        PHREEQC.LoadDatabase(db_path) # TODO Make more generic maybe with a config file.
+        PHREEQC.LoadDatabase(db_path)  # TODO Make more generic maybe with a config file.
     except pywintypes.com_error:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write("Error Could not load database file %s\n" % db_path)
@@ -111,22 +113,21 @@ def SetStuffUp( ):
         Log.write("Successfully Started GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
     return 0
 
-def WrapUpLogFile( LogFileName ):
+
+def WrapUpLogFile(log_file):
     """
     Required to end off the log file
-    :param logfilename: the name of the logfile
+    :param log_file:
     :return: None
     """
-    #globals
-    global LOG_FILE_NAME
-
-    #local imports
+    # local imports
     import datetime
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
+    with open(log_file, 'a', 0) as Log:
         Log.write("GoldQC.py completed successfully at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
     return
 
-def MyCustomCalculations(input):
+
+def MyCustomCalculations(input_list):
     """
     Required wrapper function for either completing the custom calculations 
     or for calling other functions and modules to complete these calculations.
@@ -151,37 +152,32 @@ def MyCustomCalculations(input):
                  [ 1, DBL_TYPER, "Number of Inputs" ] ]
     
     """
-    #globals
+    # globals
     global LOG_FILE_NAME
     global STEP
+
     STEP = STEP + 1
-    # imports
-    from CustomModule import RET_VAR_LIST
-    INPUT_STRING = """
-        SOLUTION 1
-        END
-        INCREMENTAL_REACTIONS
-        REACTION
-        \tNaCl 1.0
-        \t0 60*0.1 moles
-        EQUILIBRIUM_PHASES
-        \tGypsum
-        USE solution 1
-        SELECTED_OUTPUT
-        \t-reset false
-        \t-total Na S(6)
-        \t-step true
-        \t-high_precision true
-        END"""
-    ReturnList = list()
-    vector = input[0]
-    with open(LOG_FILE_NAME, 'a',0) as Log:
-        Log.write("Input on Step %d\n" %STEP)
-    with open(LOG_FILE_NAME, 'a',0) as Log:
-        for i in vector:
+    input_string = ("    SOLUTION 1\n"
+                    "    \tunits\tmg/l\n")
+    return_list = list()
+
+    element_symbols = ['Al', 'Ca', 'Mg', 'S04', 'Cl', 'Br'] # Temporary until goldsim info can be collected.
+    element_values = input_list[0]
+    e_dict = dict(zip(element_symbols,element_values))
+    for element, value in e_dict.iteritems():
+        input_string.join(str('\t' + element + '\t' + value + '\n'))
+    input_string.join("\n SELECTED_OUTPUT\n\t-totals\t")
+    for element in e_dict:
+        input_string.join(str(element + ' '))
+    input_string.join('\n')
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write("Input on Step %d\n" % STEP)
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write()
+        for i in element_values:
             Log.write(str(i) + '\n')
-    ReturnList.append(vector)
-    return ReturnList
+    return_list.append(element_values)
+    return return_list
 
 
 def process_input(input_string):
@@ -191,14 +187,14 @@ def process_input(input_string):
     :return: @see Dispatch.getSelectedOutputArray()
     """
 
-    #globals
+    # globals
     global LOG_FILE_NAME
 
-    #local imports
-    from Exceptions import DatabaseNotConnectedException
+    # local imports
     if not PHREEQC:
-        raise DatabaseNotConnectedException("PHREEQC database not connected")
-        return
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("Database is not connected or PHREEQC not running.\n")
+            return None
     PHREEQC.RunString(input_string)
     output = PHREEQC.GetSelectedOutputArray()
     with open(LOG_FILE_NAME, 'a', 0) as Log:
@@ -208,56 +204,3 @@ def process_input(input_string):
             Log.write("\n")
         Log.write("End-of-Output----------\n\n")
     return output
-
-
-# Block to run as standalone script. This can be run from the command line
-# using python TestModule.py. This standalone script block provides a good
-# way to test your custom implementation. This testing is important because
-# need to implement the Python interpreter functions imported from 
-# CustomModule without error in order to have the dll work correctly. In
-# other words, errors thrown from the Python interpreter will not make it
-# back to GoldSim.
-# This example standalone block assumes that IN_VAR_LIST has been changed to
-# one double type inputs and that RET_VAR_LIST has been changed to one double 
-# type output. Need to have MyCustomCalculations return a list which has 
-# one item which is a list containing a float value.
-if __name__ == "__main__":
-    # local imports
-    SetStuffUp()
-    t = list()
-    MyCustomCalculations(t)
-    import sys
-    from CustomModule import InitialChecks, PyModuleVersion, CalcInputs
-    from CustomModule import CalcOutputs, CustomCalculations, WrapUpStuff
-    # local variables
-    RetStatus1 = 0              # integer return status
-    ErrorMsg = ""               # error message.
-    ModelVer = 0.0              # the model versions
-    NumInputs = 0               # the number of inputs
-    NumOutputs = 0              # the number of outputs
-    RetList = list()            # the return list
-    InList = list()             # testing input list.
-    # now do the calculaitons.
-    RetStatus1 = InitialChecks()
-    if RetStatus1 != 0:
-        # this is an error
-        ErrorMsg = "Found return status of %d from InitialChecks(). This " \
-                    "denotes an error.\n" % RetStatus1
-        sys.exit( ErrorMsg )
-    # get the model versions
-    ModelVer = PyModuleVersion()
-    print( "The module version %g.\n" % ModelVer )
-    # get the number of inputs and outputs
-    NumInputs = CalcInputs()
-    NumOutputs = CalcOutputs()
-    print( "Number of inputs expected is %d \n" % NumInputs )
-    print( "Number of outputs expected is %d \n" % NumOutputs )
-    # now do the main part.
-    InList.append( 22.5 )
-    RetList = CustomCalculations( InList, NumOutputs )
-    print( "Return list is %s " % RetList )
-    # now do the wrap up.
-    WrapUpStuff()
-    # now are done
-    
-# EOF
