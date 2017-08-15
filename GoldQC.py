@@ -174,14 +174,14 @@ def MyCustomCalculations(input):
         \t-high_precision true
         END"""
     ReturnList = list()
-    listLen = len(input)
     vector = input[0]
     with open(LOG_FILE_NAME, 'a',0) as Log:
         Log.write("Input on Step %d\n" %STEP)
     with open(LOG_FILE_NAME, 'a',0) as Log:
         for i in vector:
             Log.write(str(i) + '\n')
-        return ReturnList
+    ReturnList.append(vector)
+    return ReturnList
 
 
 def process_input(input_string):
