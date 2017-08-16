@@ -1,17 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-Python Module: TestModule.py
-Created by: Nick Martin, GoldSim Technology Group
-Creation Date: 23 May 2015
-Last Edited: 25 May 2015
+Python Module: GoldQC.py
+Created by: Keiran Hines, RMIT
+Creation Date: 14/08/2017
+Last Edited: 16/08/2017
 
 License: FreeBSD License (reproduced below)
 
 Purpose:
 
-Provides a rudimentary implementation of the CustomPython.dll linkage for
-the GoldSim external element. Primarily confirms that pass the various
-supported element type values in the right format.
+Provides communication between GoldSim and PHREEQC for the purpose of
+verifying the chemical balance of a solution. This is linked using the GoldSim
+external element and PHREEQC's COM connection (IPHREEQC).
+This file was developed by recreating the TestModule.py file provided by GoldSim
+Technology Group, as such the licence and copyright for the original file are
+listed below.
+
+Original copyright notice.
+---------------------------------------------------------------------------------
+Python Module: TestModule.py
+Created by: Nick Martin, GoldSim Technology Group
+Creation Date: 23 May 2015
+Last Edited: 25 May 2015
+---------------------------------------------------------------------------------
 
 The "required" functions to implement are:
 
@@ -79,10 +90,7 @@ def SetStuffUp():
     Required function from CustomModule.py. Does whatever is needed in terms
     of set-up. Here just writes the initial entry to the log file.
     
-    Return:
-    
-        Integer status: 0 = good; 1 = bad
-    
+    :return: Integer status: 0 = good; 1 = bad
     """
     # globals
     global LOG_FILE_NAME
@@ -92,7 +100,8 @@ def SetStuffUp():
     import datetime
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
-    import pythoncom, pywintypes
+    import pythoncom
+    import pywintypes
     from win32com.client import Dispatch
 
     # start of function.
@@ -116,7 +125,7 @@ def SetStuffUp():
 
 def WrapUpLogFile(log_file):
     """
-    Required to end off the log file
+    Required to end off the log file with completion time and any other useful information
     :param log_file:
     :return: None
     """
@@ -129,54 +138,64 @@ def WrapUpLogFile(log_file):
 
 def MyCustomCalculations(input_list):
     """
-    Required wrapper function for either completing the custom calculations 
-    or for calling other functions and modules to complete these calculations.
+    Required to transform the input from GoldSim to a PHREEQC simulation string then transform the result from
+    PHREEQC back to GoldSims expected format
     
-    Arguments:
+    :param
+        input_list = a list of the input values/parameters which has come
+                    from the GoldSim external element via CustomModule.py.
     
-        PyInputList = a list of the input values/parameters which has come
-                        from the GoldSim external element via CustomModule.py.
-    
-    Return:
-    
-        ReturnList = list of the output values which needs to be in the format
-                        expected by CustomModule.py.
-    
-    RET_VAR_LIST = [ [ 3, LUTABLE_1D_TYPER, "1D Lookup Table" ],
-                 [ [4,4], MATRIX_TYPER, "Matrix" ],
-                 [ 12, TS_TYPER, "Elapsed Time Series", ELAPSED_TIME ],
-                 [ 1, DBL_TYPER, "Number of Inputs" ],
-                 [ 12, TS_TYPER, "Calendar Time Series", CALENDAR_TIME ],
-                 [ [4,3], LUTABLE_2D_TYPER, "2D Lookup Table" ],
-                 [ 12, VECTOR_TYPER, "Vector" ],
-                 [ 1, DBL_TYPER, "Number of Inputs" ] ]
-    
+    :return
+        return_list = list of the output values which needs to be in the format
+                    expected by CustomModule.py.
     """
     # globals
     global LOG_FILE_NAME
     global STEP
 
     STEP = STEP + 1
-    input_string = ("    SOLUTION 1\n"
-                    "    \tunits\tmg/l\n")
+    input_string = ('SOLUTION 1\n'
+                    '\tunits\tmg/l\n')
     return_list = list()
-
-    element_symbols = ['Al', 'Ca', 'Mg', 'S04', 'Cl', 'Br'] # Temporary until goldsim info can be collected.
+    # Start of needed items for test purposes only while we wait on getting able to extract the labels from GoldSim
+    # =======================================================================================================
+    from collections import OrderedDict
+    element_symbols = ['Al', 'Ca', 'Mg', 'Na', 'S(6)', 'Cl', 'Br']  # Temporary until goldsim info can be collected.
     element_values = input_list[0]
-    e_dict = dict(zip(element_symbols,element_values))
+    e_dict = OrderedDict(zip(element_symbols, element_values))
+    print e_dict
+    # End of needed items for test purposes only while we wait on getting able to extract the labels from GoldSim
+    # =======================================================================================================
+
+    # Need to refactor based on final GoldSim inputs
     for element, value in e_dict.iteritems():
-        input_string.join(str('\t' + element + '\t' + value + '\n'))
-    input_string.join("\n SELECTED_OUTPUT\n\t-totals\t")
+        input_string += str('\t' + element + '\t\t' + value + '\n')
+    input_string += str('\n SELECTED_OUTPUT\n\t-totals\t')
     for element in e_dict:
-        input_string.join(str(element + ' '))
-    input_string.join('\n')
+        input_string += str(element + ' ')
+    input_string += '\n'
+
+    # Input string created, Logging details.
     with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write("Input on Step %d\n" % STEP)
+        Log.write('Input on Step %d\n' % STEP)
     with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write()
-        for i in element_values:
-            Log.write(str(i) + '\n')
-    return_list.append(element_values)
+        Log.write(input_string)
+
+    # calling PHREEQC
+    phreeqc_values = process_input(input_string)
+
+    # Processing PHREEQC output to GoldSim format
+    headings = list(phreeqc_values[0])[-len(element_values):]
+    values = list(phreeqc_values[1])[-len(element_values):]
+
+    # TODO REMOVE THE PRINTS
+    print "Values"
+    print headings
+    print values
+    print "End Values"
+
+    # TODO Convert Mol/kgw to mg/l
+    return_list.append(values)
     return return_list
 
 
@@ -196,6 +215,10 @@ def process_input(input_string):
             Log.write("Database is not connected or PHREEQC not running.\n")
             return None
     PHREEQC.RunString(input_string)
+    warning = PHREEQC.getWarningString()
+    if warning:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
     with open(LOG_FILE_NAME, 'a', 0) as Log:
         Log.write("Output-----------------\n\n")
@@ -204,3 +227,15 @@ def process_input(input_string):
             Log.write("\n")
         Log.write("End-of-Output----------\n\n")
     return output
+
+
+def main():
+    SetStuffUp()
+    test_list = [["0.12", "323", "458", "4.32", "0.34", "1.23", "95.6554"]]
+    output = MyCustomCalculations(test_list)
+    WrapUpLogFile(LOG_FILE_NAME)
+    print output
+
+
+if __name__ == "__main__":
+    main()
