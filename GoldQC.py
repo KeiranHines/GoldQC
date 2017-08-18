@@ -89,7 +89,7 @@ def SetStuffUp():
     """
     Required function from CustomModule.py. Does whatever is needed in terms
     of set-up. Here just writes the initial entry to the log file.
-    
+
     :return: Integer status: 0 = good; 1 = bad
     """
     # globals
@@ -100,21 +100,19 @@ def SetStuffUp():
     import datetime
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
-    import pythoncom
-    import pywintypes
-    from win32com.client import Dispatch
 
+    from comtypes.client import CreateObject
     # start of function.
     db_path = "database/phreeqc.dat"
     try:
-        PHREEQC = Dispatch('IPhreeqcCOM.Object')
-    except pythoncom.ole_error:
+        PHREEQC = CreateObject('IPhreeqcCOM.Object')
+    except Exception:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
         return 1
     try:
         PHREEQC.LoadDatabase(db_path)  # TODO Make more generic maybe with a config file.
-    except pywintypes.com_error:
+    except Exception:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write("Error Could not load database file %s\n" % db_path)
         return 1
@@ -140,11 +138,11 @@ def MyCustomCalculations(input_list):
     """
     Required to transform the input from GoldSim to a PHREEQC simulation string then transform the result from
     PHREEQC back to GoldSims expected format
-    
+
     :param
         input_list = a list of the input values/parameters which has come
                     from the GoldSim external element via CustomModule.py.
-    
+
     :return
         return_list = list of the output values which needs to be in the format
                     expected by CustomModule.py.
@@ -154,13 +152,16 @@ def MyCustomCalculations(input_list):
     global STEP
 
     STEP = STEP + 1
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write('Running step %d\n' % STEP)
+
     input_string = ('SOLUTION 1\n'
                     '\tunits\tmg/l\n')
     return_list = list()
     # Start of needed items for test purposes only while we wait on getting able to extract the labels from GoldSim
     # =======================================================================================================
     from collections import OrderedDict
-    element_symbols = ['Al', 'Ca', 'Mg', 'Na', 'S(6)', 'Cl', 'Br']  # Temporary until goldsim info can be collected.
+    element_symbols = ['Al', 'Ca', 'Mg', 'Na', 'SO4', 'Cl', 'Br']  # Temporary until goldsim info can be collected.
     element_values = input_list[0]
     e_dict = OrderedDict(zip(element_symbols, element_values))
     print e_dict
@@ -184,6 +185,8 @@ def MyCustomCalculations(input_list):
     # calling PHREEQC
     phreeqc_values = process_input(input_string)
 
+    if phreeqc_values is None:
+        return 1
     # Processing PHREEQC output to GoldSim format
     headings = list(phreeqc_values[0])[-len(element_values):]
     values = list(phreeqc_values[1])[-len(element_values):]
