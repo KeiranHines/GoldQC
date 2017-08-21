@@ -312,7 +312,7 @@ RET_VAR_LIST = [ [ 3, LUTABLE_1D_TYPER, "1D Lookup Table" ],
                   [ 1, DBL_TYPER, "Number of Inputs" ] ]
 """
 
-RET_VAR_LIST = [ [7,VECTOR_TYPER,"outputVector" ] ]
+RET_VAR_LIST = [ [7,VECTOR_TYPER,"WQ_adjusted" ] ]
 #---------------------------------------------------------------------------
 # set the debug level. 0 = no output; 1 = will output to file input argument
 # list and output return list.

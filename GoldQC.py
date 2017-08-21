@@ -3,92 +3,47 @@
 Python Module: GoldQC.py
 Created by: Keiran Hines, RMIT
 Creation Date: 14/08/2017
-Last Edited: 16/08/2017
+Last Edited: 21/08/2017
 
-License: FreeBSD License (reproduced below)
+
+Copyright 2017, Keiran Hines
+This file is part of GoldQC.
+
+GoldQC is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+GoldQC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with GoldQC.  If not, see <http://www.gnu.org/licenses/>.
 
 Purpose:
 
 Provides communication between GoldSim and PHREEQC for the purpose of
 verifying the chemical balance of a solution. This is linked using the GoldSim
 external element and PHREEQC's COM connection (IPHREEQC).
-This file was developed by recreating the TestModule.py file provided by GoldSim
-Technology Group, as such the licence and copyright for the original file are
-listed below.
-
-Original copyright notice.
----------------------------------------------------------------------------------
-Python Module: TestModule.py
-Created by: Nick Martin, GoldSim Technology Group
-Creation Date: 23 May 2015
-Last Edited: 25 May 2015
----------------------------------------------------------------------------------
-
-The "required" functions to implement are:
-
-SetStuffUp
-WrapUpLogFile
-MyCustomCalculations
-
-The "required" parameters are:
-
-CUSTOM_MODULE_VERSION
-LOG_FILE_NAME
-
+This file was developed using the guide created by GoldSim Technologies Group
+Available at:
+https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll/
+4
 """
 
-"""
-LICENSE
-
-This module is available for your use under the FreeBSD License, see:
-http://directory.fsf.org/wiki?title=License:FreeBSD 
-
-FreeBSD License
-
-Copyright (c) 2015, GoldSim Technology Group LLC
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The views and conclusions contained in the software and documentation are those
-of the authors and should not be interpreted as representing official policies,
-either expressed or implied, of the FreeBSD Project.
-"""
-
-# ===========================================================================
 # Module level globals.
-CUSTOM_MODULE_VERSION = 0.1  # module version --- REQUIRED
-LOG_FILE_NAME = "TestLog.txt"  # log file name --- REQUIRED
+CUSTOM_MODULE_VERSION = 0.1
+LOG_FILE_NAME = "TestLog.txt"
 PHREEQC = None
 STEP = 0
 
 
-# BAD_NAME = "
-# ===========================================================================
-# functions
-
 def SetStuffUp():
     """
-    Required function from CustomModule.py. Does whatever is needed in terms
-    of set-up. Here just writes the initial entry to the log file.
+    Required function from CustomModule.py provided by GoldSim Technologies Group.
+    Starts up the Iphreeqc module and initialises the logfile.
 
     :return: Integer status: 0 = good; 1 = bad
     """
@@ -98,23 +53,34 @@ def SetStuffUp():
 
     # local imports
     import datetime
+    import ConfigParser
+    from comtypes.client import CreateObject
+    from CustomModule import DEBUG_LEVEL
+
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
 
-    from comtypes.client import CreateObject
-    # start of function.
-    db_path = "database/phreeqc.dat"
+    config = ConfigParser.ConfigParser()
+    config.read("config.ini")
+    db_path = config.get("phreeqc", "database")
+    if DEBUG_LEVEL:
+        with open(LOG_FILE_NAME, 'w', 0) as Log:
+            Log.write("database path: %s\n" % str(db_path))
+
     try:
         PHREEQC = CreateObject('IPhreeqcCOM.Object')
-    except Exception:
+    except WindowsError as e:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
+            Log.write("Error Message: %s\n" % e)
         return 1
+
     try:
-        PHREEQC.LoadDatabase(db_path)  # TODO Make more generic maybe with a config file.
-    except Exception:
+        PHREEQC.LoadDatabase(db_path)
+    except WindowsError as e:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write("Error Could not load database file %s\n" % db_path)
+            Log.write("Error message: %s" % e)
         return 1
     with open(LOG_FILE_NAME, 'a', 0) as Log:
         Log.write("Successfully Started GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
@@ -151,36 +117,47 @@ def MyCustomCalculations(input_list):
     global LOG_FILE_NAME
     global STEP
 
-    STEP = STEP + 1
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write('Running step %d\n' % STEP)
+    import ConfigParser
+    from collections import OrderedDict
+    from CustomModule import DEBUG_LEVEL
 
+    STEP = STEP + 1
+    if DEBUG_LEVEL:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("Starting Step %d\n" % STEP)
+
+    config = ConfigParser.ConfigParser()
+    config.read("config.ini")
+    element_symbols = config.get("GoldSim", "elements")
+    element_symbols = eval(element_symbols)
+    element_values = input_list[0]
+
+    if DEBUG_LEVEL:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("Element Symbols: %s\n" % str(element_symbols))
+            Log.write("Element Values:  %s\n" % str(element_values))
     input_string = ('SOLUTION 1\n'
                     '\tunits\tmg/l\n')
-    return_list = list()
-    # Start of needed items for test purposes only while we wait on getting able to extract the labels from GoldSim
-    # =======================================================================================================
-    from collections import OrderedDict
-    element_symbols = ['Al', 'Ca', 'Mg', 'Na', 'SO4', 'Cl', 'Br']  # Temporary until goldsim info can be collected.
-    element_values = input_list[0]
+
     e_dict = OrderedDict(zip(element_symbols, element_values))
     print e_dict
-    # End of needed items for test purposes only while we wait on getting able to extract the labels from GoldSim
-    # =======================================================================================================
+    if DEBUG_LEVEL:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(str(e_dict) + "\n")
 
     # Need to refactor based on final GoldSim inputs
     for element, value in e_dict.iteritems():
-        input_string += str('\t' + element + '\t\t' + value + '\n')
+        input_string += str('\t' + element + '\t\t' + str(value) + '\n')
     input_string += str('\n SELECTED_OUTPUT\n\t-totals\t')
     for element in e_dict:
         input_string += str(element + ' ')
     input_string += '\n'
 
     # Input string created, Logging details.
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write('Input on Step %d\n' % STEP)
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write(input_string)
+    if DEBUG_LEVEL:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write('Input on Step %d\n' % STEP)
+            Log.write(input_string)
 
     # calling PHREEQC
     phreeqc_values = process_input(input_string)
@@ -191,14 +168,13 @@ def MyCustomCalculations(input_list):
     headings = list(phreeqc_values[0])[-len(element_values):]
     values = list(phreeqc_values[1])[-len(element_values):]
 
-    # TODO REMOVE THE PRINTS
-    print "Values"
-    print headings
-    print values
-    print "End Values"
 
     # TODO Convert Mol/kgw to mg/l
+    return_list = list()
     return_list.append(values)
+    if DEBUG_LEVEL:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("return list: " + str(return_list) + "\n")
     return return_list
 
 
@@ -223,17 +199,14 @@ def process_input(input_string):
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write("Output-----------------\n\n")
-        for o in output:
-            Log.write(str(o))
-            Log.write("\n")
-        Log.write("End-of-Output----------\n\n")
+    #TODO handle warning items properly
     return output
 
 
 def main():
-    SetStuffUp()
+    status = SetStuffUp()
+    if status:
+        exit(status)
     test_list = [["0.12", "323", "458", "4.32", "0.34", "1.23", "95.6554"]]
     output = MyCustomCalculations(test_list)
     WrapUpLogFile(LOG_FILE_NAME)
