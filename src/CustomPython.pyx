@@ -17,7 +17,7 @@ availabe from http://cython.org/.
 
 This Cython file provides linkage from c-language dll CustomPython.dll to a
 pure Python custom model. This Cython module relies on the pure, Python
-accessory module CustomModule.py.
+accessory module GoldQC.py.
 
 For this Cython file do not use a *.pxd file. The header (.h) file will
 not be created correctly for c for this with the *.pxd file.
@@ -195,7 +195,7 @@ cdef public int InitRoutines( ):
     
     """
     # local imports
-    from CustomModule import InitialChecks
+    from GoldQC import InitialChecks
     # local variables
     # c variables
     cdef int IntStatus = 0
@@ -220,7 +220,7 @@ cdef public double ReturnCustomModuleVersion( ):
     
     """
     # local imports (only Python imports)
-    from CustomModule import PyModuleVersion
+    from GoldQC import PyModuleVersion
     # c variable declarations.
     cdef double VersionNumber = PyModuleVersion()
     # now return
@@ -237,7 +237,7 @@ cdef public int NumInputsExpected( ):
     
     """
     # local imports
-    from CustomModule import CalcInputs
+    from GoldQC import CalcInputs
     # c variable declarations
     cdef int RetInputs = 0          # the number of inputs returned.
     # start of function
@@ -256,7 +256,7 @@ cdef public int NumOutputsToProvide( ):
     
     """
     # local imports
-    from CustomModule import CalcOutputs
+    from GoldQC import CalcOutputs
      # c variable declarations
     cdef int RetOutputs = 0          # the number of inputs returned.
     # start of function
@@ -273,7 +273,7 @@ cdef public void WrapUpSimulation( ):
     
     """
     # local imports
-    from CustomModule import WrapUpStuff
+    from GoldQC import WrapUpStuff
     # call the function.
     WrapUpStuff( )
     # now return
@@ -301,7 +301,7 @@ cdef public int DoCalcsAndReturnValues( double * inargs, double * outargs ):
     """
     # local imports
     from copy import deepcopy
-    from CustomModule import CustomCalculations
+    from GoldQC import CustomCalculations
     # local variables
     # Python variables 
     PyIntRetNum = int( 0 )                  # the return number
@@ -352,7 +352,7 @@ cdef public void PyCompileError( ):
     
     """
     # local imports
-    from CustomModule import PythonInitializationError
+    from GoldQC import PythonInitializationError
     # call the function.
     PythonInitializationError( )
     # now return

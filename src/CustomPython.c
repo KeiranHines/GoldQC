@@ -968,6 +968,7 @@ static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_UTF_8[] = "UTF-8";
 static const char __pyx_k_range[] = "range";
+static const char __pyx_k_GoldQC[] = "GoldQC";
 static const char __pyx_k_encode[] = "encode";
 static const char __pyx_k_import[] = "__import__";
 static const char __pyx_k_deepcopy[] = "deepcopy";
@@ -980,14 +981,13 @@ static const char __pyx_k_pyMSG_RARG[] = "pyMSG_RARG";
 static const char __pyx_k_pyMSG_RVER[] = "pyMSG_RVER";
 static const char __pyx_k_CalcOutputs[] = "CalcOutputs";
 static const char __pyx_k_WrapUpStuff[] = "WrapUpStuff";
-static const char __pyx_k_CustomModule[] = "CustomModule";
 static const char __pyx_k_pyMSG_PyCOMP[] = "pyMSG_PyCOMP";
 static const char __pyx_k_InitialChecks[] = "InitialChecks";
 static const char __pyx_k_PyModuleVersion[] = "PyModuleVersion";
 static const char __pyx_k_CustomCalculations[] = "CustomCalculations";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
 static const char __pyx_k_PythonInitializationError[] = "PythonInitializationError";
-static const char __pyx_k_Cython_Module_CustomPython_pyx[] = "\nCython Module: CustomPython.pyx\nCreated by: Nick Martin, GoldSim Technology Group\nCreation Date: 21 May 2015\nLast Edited: 15 June 2015\n\nLicense: FreeBSD License (reproduced below)\n\nPurpose:\n\nThis is a Cython file. Cython is \"an optimising static compiler for both the\nPython programming language and the extended Cython programming language\n(based on Pyrex). It makes writing C extensions for Python as easy as Python\nitself.\" Additional Cython information including the documentation is \navailabe from http://cython.org/.\n\nThis Cython file provides linkage from c-language dll CustomPython.dll to a\npure Python custom model. This Cython module relies on the pure, Python\naccessory module CustomModule.py.\n\nFor this Cython file do not use a *.pxd file. The header (.h) file will\nnot be created correctly for c for this with the *.pxd file.\n\n";
+static const char __pyx_k_Cython_Module_CustomPython_pyx[] = "\nCython Module: CustomPython.pyx\nCreated by: Nick Martin, GoldSim Technology Group\nCreation Date: 21 May 2015\nLast Edited: 15 June 2015\n\nLicense: FreeBSD License (reproduced below)\n\nPurpose:\n\nThis is a Cython file. Cython is \"an optimising static compiler for both the\nPython programming language and the extended Cython programming language\n(based on Pyrex). It makes writing C extensions for Python as easy as Python\nitself.\" Additional Cython information including the documentation is \navailabe from http://cython.org/.\n\nThis Cython file provides linkage from c-language dll CustomPython.dll to a\npure Python custom model. This Cython module relies on the pure, Python\naccessory module GoldQC.py.\n\nFor this Cython file do not use a *.pxd file. The header (.h) file will\nnot be created correctly for c for this with the *.pxd file.\n\n";
 static const char __pyx_k_Error_in_CustomPython_DLL_Unsupp[] = "Error in CustomPython DLL. Unsupported action type given to DLL interface.     ";
 static const char __pyx_k_Error_in_CustomPython_DLL_in_VER[] = "Error in CustomPython DLL in VER. REPORT action; check Python code compilation.";
 static const char __pyx_k_Error_in_CustomPython_DLL_in_the[] = "Error in CustomPython DLL in the INITIALIZATION action. See the log file.      ";
@@ -998,7 +998,6 @@ static const char __pyx_k_Error_in_CustomPython_DLL_in_the_4[] = "Error in Custo
 static PyObject *__pyx_n_s_CalcInputs;
 static PyObject *__pyx_n_s_CalcOutputs;
 static PyObject *__pyx_n_s_CustomCalculations;
-static PyObject *__pyx_n_s_CustomModule;
 static PyObject *__pyx_kp_s_Error_in_CustomPython_DLL_Unsupp;
 static PyObject *__pyx_kp_s_Error_in_CustomPython_DLL_in_VER;
 static PyObject *__pyx_kp_s_Error_in_CustomPython_DLL_in_the;
@@ -1006,6 +1005,7 @@ static PyObject *__pyx_kp_s_Error_in_CustomPython_DLL_in_the_2;
 static PyObject *__pyx_kp_s_Error_in_CustomPython_DLL_in_the_3;
 static PyObject *__pyx_kp_s_Error_in_CustomPython_DLL_in_the_4;
 static PyObject *__pyx_kp_s_Error_in_Python_compilation_Plea;
+static PyObject *__pyx_n_s_GoldQC;
 static PyObject *__pyx_n_s_InitialChecks;
 static PyObject *__pyx_n_s_PyModuleVersion;
 static PyObject *__pyx_n_s_PythonInitializationError;
@@ -1491,7 +1491,7 @@ int InitRoutines(void) {
   /* "CustomPython.pyx":198
  *     """
  *     # local imports
- *     from CustomModule import InitialChecks             # <<<<<<<<<<<<<<
+ *     from GoldQC import InitialChecks             # <<<<<<<<<<<<<<
  *     # local variables
  *     # c variables
  */
@@ -1500,7 +1500,7 @@ int InitRoutines(void) {
   __Pyx_INCREF(__pyx_n_s_InitialChecks);
   __Pyx_GIVEREF(__pyx_n_s_InitialChecks);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_InitialChecks);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 198, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 198, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_InitialChecks); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 198, __pyx_L1_error)
@@ -1631,7 +1631,7 @@ double ReturnCustomModuleVersion(void) {
   /* "CustomPython.pyx":223
  *     """
  *     # local imports (only Python imports)
- *     from CustomModule import PyModuleVersion             # <<<<<<<<<<<<<<
+ *     from GoldQC import PyModuleVersion             # <<<<<<<<<<<<<<
  *     # c variable declarations.
  *     cdef double VersionNumber = PyModuleVersion()
  */
@@ -1640,7 +1640,7 @@ double ReturnCustomModuleVersion(void) {
   __Pyx_INCREF(__pyx_n_s_PyModuleVersion);
   __Pyx_GIVEREF(__pyx_n_s_PyModuleVersion);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_PyModuleVersion);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 223, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 223, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_PyModuleVersion); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 223, __pyx_L1_error)
@@ -1651,7 +1651,7 @@ double ReturnCustomModuleVersion(void) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "CustomPython.pyx":225
- *     from CustomModule import PyModuleVersion
+ *     from GoldQC import PyModuleVersion
  *     # c variable declarations.
  *     cdef double VersionNumber = PyModuleVersion()             # <<<<<<<<<<<<<<
  *     # now return
@@ -1733,7 +1733,7 @@ int NumInputsExpected(void) {
   /* "CustomPython.pyx":240
  *     """
  *     # local imports
- *     from CustomModule import CalcInputs             # <<<<<<<<<<<<<<
+ *     from GoldQC import CalcInputs             # <<<<<<<<<<<<<<
  *     # c variable declarations
  *     cdef int RetInputs = 0          # the number of inputs returned.
  */
@@ -1742,7 +1742,7 @@ int NumInputsExpected(void) {
   __Pyx_INCREF(__pyx_n_s_CalcInputs);
   __Pyx_GIVEREF(__pyx_n_s_CalcInputs);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_CalcInputs);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 240, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 240, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_CalcInputs); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 240, __pyx_L1_error)
@@ -1753,7 +1753,7 @@ int NumInputsExpected(void) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "CustomPython.pyx":242
- *     from CustomModule import CalcInputs
+ *     from GoldQC import CalcInputs
  *     # c variable declarations
  *     cdef int RetInputs = 0          # the number of inputs returned.             # <<<<<<<<<<<<<<
  *     # start of function
@@ -1844,7 +1844,7 @@ int NumOutputsToProvide(void) {
   /* "CustomPython.pyx":259
  *     """
  *     # local imports
- *     from CustomModule import CalcOutputs             # <<<<<<<<<<<<<<
+ *     from GoldQC import CalcOutputs             # <<<<<<<<<<<<<<
  *      # c variable declarations
  *     cdef int RetOutputs = 0          # the number of inputs returned.
  */
@@ -1853,7 +1853,7 @@ int NumOutputsToProvide(void) {
   __Pyx_INCREF(__pyx_n_s_CalcOutputs);
   __Pyx_GIVEREF(__pyx_n_s_CalcOutputs);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_CalcOutputs);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 259, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 259, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_CalcOutputs); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 259, __pyx_L1_error)
@@ -1864,7 +1864,7 @@ int NumOutputsToProvide(void) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "CustomPython.pyx":261
- *     from CustomModule import CalcOutputs
+ *     from GoldQC import CalcOutputs
  *      # c variable declarations
  *     cdef int RetOutputs = 0          # the number of inputs returned.             # <<<<<<<<<<<<<<
  *     # start of function
@@ -1952,7 +1952,7 @@ void WrapUpSimulation(void) {
   /* "CustomPython.pyx":276
  *     """
  *     # local imports
- *     from CustomModule import WrapUpStuff             # <<<<<<<<<<<<<<
+ *     from GoldQC import WrapUpStuff             # <<<<<<<<<<<<<<
  *     # call the function.
  *     WrapUpStuff( )
  */
@@ -1961,7 +1961,7 @@ void WrapUpSimulation(void) {
   __Pyx_INCREF(__pyx_n_s_WrapUpStuff);
   __Pyx_GIVEREF(__pyx_n_s_WrapUpStuff);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_WrapUpStuff);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 276, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 276, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_WrapUpStuff); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 276, __pyx_L1_error)
@@ -1972,7 +1972,7 @@ void WrapUpSimulation(void) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "CustomPython.pyx":278
- *     from CustomModule import WrapUpStuff
+ *     from GoldQC import WrapUpStuff
  *     # call the function.
  *     WrapUpStuff( )             # <<<<<<<<<<<<<<
  *     # now return
@@ -2067,7 +2067,7 @@ int DoCalcsAndReturnValues(double *__pyx_v_inargs, double *__pyx_v_outargs) {
  *     """
  *     # local imports
  *     from copy import deepcopy             # <<<<<<<<<<<<<<
- *     from CustomModule import CustomCalculations
+ *     from GoldQC import CustomCalculations
  *     # local variables
  */
   __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 303, __pyx_L1_error)
@@ -2088,7 +2088,7 @@ int DoCalcsAndReturnValues(double *__pyx_v_inargs, double *__pyx_v_outargs) {
   /* "CustomPython.pyx":304
  *     # local imports
  *     from copy import deepcopy
- *     from CustomModule import CustomCalculations             # <<<<<<<<<<<<<<
+ *     from GoldQC import CustomCalculations             # <<<<<<<<<<<<<<
  *     # local variables
  *     # Python variables
  */
@@ -2097,7 +2097,7 @@ int DoCalcsAndReturnValues(double *__pyx_v_inargs, double *__pyx_v_outargs) {
   __Pyx_INCREF(__pyx_n_s_CustomCalculations);
   __Pyx_GIVEREF(__pyx_n_s_CustomCalculations);
   PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_CustomCalculations);
-  __pyx_t_1 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_2, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 304, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_2, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 304, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_1, __pyx_n_s_CustomCalculations); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 304, __pyx_L1_error)
@@ -2529,7 +2529,7 @@ void PyCompileError(void) {
   /* "CustomPython.pyx":355
  *     """
  *     # local imports
- *     from CustomModule import PythonInitializationError             # <<<<<<<<<<<<<<
+ *     from GoldQC import PythonInitializationError             # <<<<<<<<<<<<<<
  *     # call the function.
  *     PythonInitializationError( )
  */
@@ -2538,7 +2538,7 @@ void PyCompileError(void) {
   __Pyx_INCREF(__pyx_n_s_PythonInitializationError);
   __Pyx_GIVEREF(__pyx_n_s_PythonInitializationError);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_PythonInitializationError);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_CustomModule, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 355, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_GoldQC, __pyx_t_1, -1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 355, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_PythonInitializationError); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 355, __pyx_L1_error)
@@ -2549,7 +2549,7 @@ void PyCompileError(void) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "CustomPython.pyx":357
- *     from CustomModule import PythonInitializationError
+ *     from GoldQC import PythonInitializationError
  *     # call the function.
  *     PythonInitializationError( )             # <<<<<<<<<<<<<<
  *     # now return
@@ -2629,7 +2629,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_CalcInputs, __pyx_k_CalcInputs, sizeof(__pyx_k_CalcInputs), 0, 0, 1, 1},
   {&__pyx_n_s_CalcOutputs, __pyx_k_CalcOutputs, sizeof(__pyx_k_CalcOutputs), 0, 0, 1, 1},
   {&__pyx_n_s_CustomCalculations, __pyx_k_CustomCalculations, sizeof(__pyx_k_CustomCalculations), 0, 0, 1, 1},
-  {&__pyx_n_s_CustomModule, __pyx_k_CustomModule, sizeof(__pyx_k_CustomModule), 0, 0, 1, 1},
   {&__pyx_kp_s_Error_in_CustomPython_DLL_Unsupp, __pyx_k_Error_in_CustomPython_DLL_Unsupp, sizeof(__pyx_k_Error_in_CustomPython_DLL_Unsupp), 0, 0, 1, 0},
   {&__pyx_kp_s_Error_in_CustomPython_DLL_in_VER, __pyx_k_Error_in_CustomPython_DLL_in_VER, sizeof(__pyx_k_Error_in_CustomPython_DLL_in_VER), 0, 0, 1, 0},
   {&__pyx_kp_s_Error_in_CustomPython_DLL_in_the, __pyx_k_Error_in_CustomPython_DLL_in_the, sizeof(__pyx_k_Error_in_CustomPython_DLL_in_the), 0, 0, 1, 0},
@@ -2637,6 +2636,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_Error_in_CustomPython_DLL_in_the_3, __pyx_k_Error_in_CustomPython_DLL_in_the_3, sizeof(__pyx_k_Error_in_CustomPython_DLL_in_the_3), 0, 0, 1, 0},
   {&__pyx_kp_s_Error_in_CustomPython_DLL_in_the_4, __pyx_k_Error_in_CustomPython_DLL_in_the_4, sizeof(__pyx_k_Error_in_CustomPython_DLL_in_the_4), 0, 0, 1, 0},
   {&__pyx_kp_s_Error_in_Python_compilation_Plea, __pyx_k_Error_in_Python_compilation_Plea, sizeof(__pyx_k_Error_in_Python_compilation_Plea), 0, 0, 1, 0},
+  {&__pyx_n_s_GoldQC, __pyx_k_GoldQC, sizeof(__pyx_k_GoldQC), 0, 0, 1, 1},
   {&__pyx_n_s_InitialChecks, __pyx_k_InitialChecks, sizeof(__pyx_k_InitialChecks), 0, 0, 1, 1},
   {&__pyx_n_s_PyModuleVersion, __pyx_k_PyModuleVersion, sizeof(__pyx_k_PyModuleVersion), 0, 0, 1, 1},
   {&__pyx_n_s_PythonInitializationError, __pyx_k_PythonInitializationError, sizeof(__pyx_k_PythonInitializationError), 0, 0, 1, 1},
