@@ -53,7 +53,7 @@ LOG_FILE_NAME = CONFIG.get("GoldQC", "log_file")
 DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
 
 IN_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "inputVector"]]
-RET_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "WQ_adjusted"]]
+RET_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "outputVector"]]
 
 
 def InitialChecks():
@@ -72,31 +72,33 @@ def InitialChecks():
     import datetime
     from comtypes.client import CreateObject
 
+    debug_string = ''
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
 
     db_path = CONFIG.get("phreeqc", "database")
     if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'w', 0) as Log:
-            Log.write("database path: %s\n" % str(db_path))
+        debug_string += str("database path: %s\n" % str(db_path))
 
     try:
         PHREEQC = CreateObject('IPhreeqcCOM.Object')
     except WindowsError as e:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
-            Log.write("Error Message: %s\n" % e)
+        debug_string += str("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
+        debug_string += str("Error Message: %s\n" % e)
+        WriteStringToLog(debug_string)
         return 1
 
     try:
         PHREEQC.LoadDatabase(db_path)
     except WindowsError as e:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("Error Could not load database file %s\n" % db_path)
-            Log.write("Error message: %s" % e)
+        debug_string += str("Error Could not load database file %s\n" % db_path)
+        debug_string += str("Error message: %s" % e)
+        WriteStringToLog(debug_string)
         return 1
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write("Successfully Started GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
+
+    debug_string += str("Successfully Started GoldQC.py script at %s.\n\n" %
+                        datetime.datetime.now().strftime("%x %H:%M"))
+    WriteStringToLog(debug_string)
     return 0
 
 
@@ -323,14 +325,15 @@ def PythonInitializationError():
     """
     Python function to write an error to the log file.
     """
-    with open(LOG_FILE_NAME, 'a', 0) as LogFID:
-        LogFID.write("Python did not initialize correctly.\n")
-        LogFID.write("This is most likely due to an error in your Python code\n")
-        LogFID.write("which was triggered during the bytecode compilation\n")
-        LogFID.write("step which was triggered by an import statement.\n")
-        LogFID.write("Please use an if __name__ == \"__main__\": block \n")
-        LogFID.write("in your Python module to test and to ensure that it \n")
-        LogFID.write("runs without error.\n")
+    debug_string = str("Python did not initialize correctly.\n")
+    debug_string += str("This is most likely due to an error in your Python code\n")
+    debug_string += str("which was triggered during the bytecode compilation\n")
+    debug_string += str("step which was triggered by an import statement.\n")
+    debug_string += str("Please use an if __name__ == \"__main__\": block \n")
+    debug_string += str("in your Python module to test and to ensure that it \n")
+    debug_string += str("runs without error.\n")
+
+    WriteStringToLog(debug_string)
     return
 
 
@@ -348,55 +351,50 @@ def MyCustomCalculations(input_list):
     global STEP
     global DEBUG_LEVEL
 
-    import ConfigParser
     import re
     from collections import OrderedDict
     from MoralMass import MOLAR_MASS_LIST
 
-    STEP = STEP + 1
-    if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("Starting Step %d\n" % STEP)
+    debug_string = ''
 
-    config = ConfigParser.ConfigParser()
-    config.read("GoldQC.config")
-    element_symbols = config.get("GoldSim", "elements")
-    element_symbols = eval(element_symbols)
+    if DEBUG_LEVEL:
+        debug_string += str("Starting step %d\n" % STEP)
     element_values = input_list[0]
 
     if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("Element Symbols: %s\n" % str(element_symbols))
-            Log.write("Element Values:  %s\n" % str(element_values))
+        debug_string += str("Element Symbols: %s\n" % str(ELEMENTS))
+        debug_string += str("Element Values:  %s\n" % str(element_values))
     input_string = ('SOLUTION 1\n'
                     '\tunits\tmg/l\n'
                     '\twater\t\t1\n')
-    e_dict = OrderedDict(zip(element_symbols, element_values))
-    print e_dict
-    if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write(str(e_dict) + "\n")
+    element_dict = OrderedDict(zip(ELEMENTS, element_values))
 
     # Need to refactor based on final GoldSim inputs
-    for element, value in e_dict.iteritems():
+    for element, value in element_dict.iteritems():
         input_string += str('\t' + element + '\t\t' + str(value) + '\n')
-
-    input_string += str('\n SELECTED_OUTPUT\nUSER_PUNCH\n\t-headings ')
-    for element in e_dict:
+    input_string += str('EQUILIBRIUM_PHASES\n\tGypsum\n')
+    input_string += str('SELECTED_OUTPUT\n\t-totals ')
+    for element in element_dict:
         input_string += str(element + ' ')
-    input_string += '\n-start\n'
-
-    i =1
-    for element in e_dict:
-        input_string += str('\t' + str(i) + '0\tPUNCH MOL(\"' + element + '\")\n')
-        i += 1
-    input_string += '-end\n'
+    input_string += '\n'
+    # ---------------------------------------------------------------------------------
+    # USER_PUNCH MODE
+    # input_string += str('SELECTED_OUTPUT\nUSER_PUNCH\n\t-headings ')
+    # for element in element_dict:
+    #     input_string += str(element + ' ')
+    # input_string += '\n-start\n'
+    #
+    # i = 1
+    # for element in element_dict:
+    #     input_string += str('\t' + str(i) + '0\tPUNCH TOT(\"' + element + '\")\n')
+    #     i += 1
+    # input_string += '-end\n'
+    # ----------------------------------------------------------------------------------
 
     # Input string created, Logging details.
     if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write('Input on Step %d\n' % STEP)
-            Log.write(input_string)
+        debug_string += str('Input on Step %d\n' % STEP)
+        debug_string += str(input_string)
 
     # calling PHREEQC
     phreeqc_values = process_input(input_string)
@@ -405,12 +403,18 @@ def MyCustomCalculations(input_list):
         return 1
     # Processing PHREEQC output to GoldSim format
     headings = list(phreeqc_values[0])[-len(element_values):]
-    values = list(phreeqc_values[1])[-len(element_values):]
-    if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("headings: %s\n" % str(headings))
-            Log.write("values  : %s\n" % str(values))
+    values = list(phreeqc_values[2])[-len(element_values):]
+    react = list(phreeqc_values[2])[-len(element_values):]
+    # with open("For_david.txt", 'a',0) as D:
+    #     D.write("step %d\n" % STEP)
+    #     D.write("headings %s\n" % str(headings))
+    #     D.write("totals %s\n" % str(values))
+    #     D.write("react %s\n\n" % str(react))
 
+    if DEBUG_LEVEL:
+        debug_string += str("headings : %s\n" % str(headings))
+        debug_string += str("values   : %s\n" % str(values))
+        debug_string += str("react(eq): %s\n" % str(react))
     # Converting mol/kgw to mg/l
     i = 0
     while i < len(headings):
@@ -422,8 +426,11 @@ def MyCustomCalculations(input_list):
     return_list = list()
     return_list.append(values)
     if DEBUG_LEVEL:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("return list: " + str(return_list) + "\n\n")
+        debug_string += str("return list: " + str(return_list) + "\n\n")
+
+    if DEBUG_LEVEL:
+        WriteStringToLog(debug_string)
+    STEP += 1
     return return_list
 
 
@@ -444,10 +451,11 @@ def process_input(input_string):
     # noinspection PyBroadException
     try:
         PHREEQC.RunString(input_string)
-    except Exception:
-        error = PHREEQC.GetErrorString()
-        if error:
-            with open(LOG_FILE_NAME, 'a', 0) as Log:
+    except Exception as e:
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(str(e))
+            error = PHREEQC.GetErrorString()
+            if error:
                 Log.write(error)
                 return None
     warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim
@@ -456,6 +464,11 @@ def process_input(input_string):
             Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
     return output
+
+
+def WriteStringToLog(string):
+    with open(LOG_FILE_NAME,'a',0) as Log:
+        Log.write(string)
 
 
 def main():
