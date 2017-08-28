@@ -3,7 +3,7 @@
 Python Module: GoldQC.py
 Created by: Keiran Hines, RMIT
 Creation Date: 14/08/2017
-Last Edited: 21/08/2017
+Last Edited: 28/08/2017
 
 
 Copyright 2017, Keiran Hines
@@ -35,15 +35,18 @@ https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll
 # ===========================================================================
 # imports
 import ConfigParser
+import ctypes
 
 # Module level globals.
 CUSTOM_MODULE_VERSION = 0.5
 PHREEQC = None
+GOLDSIM = ctypes.CDLL('GoldQC.dll')
 STEP = 0
-VECTOR_TYPE = "1-D Array"      # this is vector
-VAR_CNT_IND = 0             # index of count
-VAR_TYPE_IND = 1            # index for the type
-VAR_DESC_IND = 2            # the index for the description
+
+VECTOR_TYPE = "1-D Array"  # this is vector
+VAR_CNT_IND = 0  # index of count
+VAR_TYPE_IND = 1  # index for the type
+VAR_DESC_IND = 2  # the index for the description
 
 CONFIG = ConfigParser.ConfigParser()
 CONFIG.read("GoldQC.config")
@@ -144,10 +147,10 @@ def InputEcho(input_list, var_definition, py_in_list):
     global VECTOR_TYPE
 
     # local parameters
-    out_file_name = "Echo_Inputs.csv"     # output file name
+    out_file_name = "Echo_Inputs.csv"  # output file name
 
     # local variables
-    var_cnt = 0          # the variable counter
+    var_cnt = 0  # the variable counter
 
     with open(out_file_name, 'w', 0) as output_file:
         output_file.write("Input variable definition:\n\n")
@@ -199,10 +202,10 @@ def OutputEcho(output_list, var_definition, py_out_list):
     # globals
     global VECTOR_TYPE
     # local parameters
-    out_file_name = "Echo_Outputs.csv"     # output file name
+    out_file_name = "Echo_Outputs.csv"  # output file name
     # parameters
     # local variables
-    var_cnt = 0          # the variable counter
+    var_cnt = 0  # the variable counter
     # now output
     with open(out_file_name, 'w', 0) as OutFID:
         # first output the variable definition from RET_VAR_LIST
@@ -213,7 +216,7 @@ def OutputEcho(output_list, var_definition, py_out_list):
             current_desc = str(this_var[VAR_DESC_IND])
 
             OutFID.write("%d, %d, %s, %s\n" % (var_cnt + 1,
-                         this_var[VAR_CNT_IND], current_type, current_desc))
+                                               this_var[VAR_CNT_IND], current_type, current_desc))
             var_cnt = var_cnt + 1
         OutFID.write("\n\n\n")
         # next do the Python structures returned from CImp
@@ -263,9 +266,9 @@ def CustomCalculations(input_list, num_return):
     global DEBUG_LEVEL
 
     num_output_vars = len(RET_VAR_LIST)  # the number of input variables.
-    start_index = 0                      # the starting index for the input.
-    tst_indexes = list()                 # the indexes for testing
-    py_input_list = list()               # inputs in Python list format
+    start_index = 0  # the starting index for the input.
+    tst_indexes = list()  # the indexes for testing
+    py_input_list = list()  # inputs in Python list format
     current_indexes = 0
 
     tst_indexes.append(0)
@@ -286,10 +289,10 @@ def CustomCalculations(input_list, num_return):
     ret_var_list = MyCustomCalculations(py_input_list)
 
     if len(ret_var_list) != num_output_vars:
-        with open(LOG_FILE_NAME, 'a', 0) as LogFID:
-            LogFID.write("Received %d variables back from processing in "
-                         "function CustomCalculations. Expected %d variables.\n" %
-                         (len(ret_var_list), num_output_vars))
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("Received %d variables back from processing in "
+                      "function CustomCalculations. Expected %d variables.\n" %
+                      (len(ret_var_list), num_output_vars))
         return [-1]
     return_list = ret_var_list[0]
 
@@ -299,12 +302,11 @@ def CustomCalculations(input_list, num_return):
 
     # noinspection PyTypeChecker
     if len(return_list) != num_return:
-        with open(LOG_FILE_NAME, 'a', 0) as LogFID:
-
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
             # noinspection PyTypeChecker
-            LogFID.write("Created return list with wrong length. Return " 
-                         "list has length %d. Needs to have length %d.\n" %
-                         (len(return_list), num_return))
+            Log.write("Created return list with wrong length. Return "
+                      "list has length %d. Needs to have length %d.\n" %
+                      (len(return_list), num_return))
         return [-1]
     return return_list
 
@@ -353,7 +355,7 @@ def MyCustomCalculations(input_list):
 
     import re
     from collections import OrderedDict
-    from MoralMass import MOLAR_MASS_LIST
+    from Converstions import MOLAR_MASS_LIST
 
     debug_string = ''
 
@@ -364,19 +366,24 @@ def MyCustomCalculations(input_list):
     if DEBUG_LEVEL:
         debug_string += str("Element Symbols: %s\n" % str(ELEMENTS))
         debug_string += str("Element Values:  %s\n" % str(element_values))
-    input_string = ('SOLUTION 1\n'
+    input_string = ('SOLUTION %d\n'
                     '\tunits\tmg/l\n'
-                    '\twater\t\t1\n')
+                    '\twater\t\t1\n' % STEP)
     element_dict = OrderedDict(zip(ELEMENTS, element_values))
 
     # Need to refactor based on final GoldSim inputs
     for element, value in element_dict.iteritems():
         input_string += str('\t' + element + '\t\t' + str(value) + '\n')
-    input_string += str('EQUILIBRIUM_PHASES\n\tGypsum\n')
+
+    input_string += str('EQUILIBRIUM_PHASES\n\tGypsum\t0\t0\n')
+
+    # ---------------------------------------------------------------------------------
+    # TOTALS MODE
     input_string += str('SELECTED_OUTPUT\n\t-totals ')
     for element in element_dict:
         input_string += str(element + ' ')
-    input_string += '\n'
+    # ---------------------------------------------------------------------------------
+
     # ---------------------------------------------------------------------------------
     # USER_PUNCH MODE
     # input_string += str('SELECTED_OUTPUT\nUSER_PUNCH\n\t-headings ')
@@ -386,10 +393,11 @@ def MyCustomCalculations(input_list):
     #
     # i = 1
     # for element in element_dict:
-    #     input_string += str('\t' + str(i) + '0\tPUNCH TOT(\"' + element + '\")\n')
+    #     input_string += str('\t' + str(i) + '0\tPUNCH TOT(\"' + element + '\") * ' + str(MOLAR_MASS_LIST[element]) + ' * 1000\n')
     #     i += 1
     # input_string += '-end\n'
     # ----------------------------------------------------------------------------------
+    input_string += '\nEND\n'
 
     # Input string created, Logging details.
     if DEBUG_LEVEL:
@@ -400,22 +408,21 @@ def MyCustomCalculations(input_list):
     phreeqc_values = process_input(input_string)
 
     if phreeqc_values is None:
-        return 1
+        WriteStringToLog(debug_string)
+        STEP += 1
+        return [-2]
+
     # Processing PHREEQC output to GoldSim format
     headings = list(phreeqc_values[0])[-len(element_values):]
     values = list(phreeqc_values[2])[-len(element_values):]
     react = list(phreeqc_values[2])[-len(element_values):]
-    # with open("For_david.txt", 'a',0) as D:
-    #     D.write("step %d\n" % STEP)
-    #     D.write("headings %s\n" % str(headings))
-    #     D.write("totals %s\n" % str(values))
-    #     D.write("react %s\n\n" % str(react))
 
     if DEBUG_LEVEL:
         debug_string += str("headings : %s\n" % str(headings))
         debug_string += str("values   : %s\n" % str(values))
         debug_string += str("react(eq): %s\n" % str(react))
-    # Converting mol/kgw to mg/l
+
+    # Converting mol/kgw to mg/l ONLY NEEDED IN TOTALS MODE
     i = 0
     while i < len(headings):
         headings[i] = re.sub('\(mol/kgw\)$', '', headings[i])
@@ -427,9 +434,8 @@ def MyCustomCalculations(input_list):
     return_list.append(values)
     if DEBUG_LEVEL:
         debug_string += str("return list: " + str(return_list) + "\n\n")
-
-    if DEBUG_LEVEL:
         WriteStringToLog(debug_string)
+
     STEP += 1
     return return_list
 
@@ -443,17 +449,26 @@ def process_input(input_string):
 
     # globals
     global LOG_FILE_NAME
+    global PHREEQC
+    global STEP
+    from comtypes.client import CreateObject
 
     if not PHREEQC:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("Database is not connected or PHREEQC not running.\n")
+            try:
+                PHREEQC = CreateObject('IPhreeqcCOM.Object')
+            except WindowsError as e:
+                Log.write("Error restarting PHreeqc connection\n")
+                Log.write(str(e))
+                Log.write("Database is not connected or PHREEQC not running.\n")
+
             return None
     # noinspection PyBroadException
     try:
         PHREEQC.RunString(input_string)
-    except Exception as e:
+    except Exception:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write(str(e))
+            Log.write(str('Error at step %d: \n' % STEP))
             error = PHREEQC.GetErrorString()
             if error:
                 Log.write(error)
@@ -461,13 +476,14 @@ def process_input(input_string):
     warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim
     if warning:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(str('Warning at step %d: \n' % STEP))
             Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
     return output
 
 
 def WriteStringToLog(string):
-    with open(LOG_FILE_NAME,'a',0) as Log:
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
         Log.write(string)
 
 
