@@ -149,6 +149,5 @@ ELEMENT_SYMBOLS: A lookup dictionary to convert common Element pairs from GoldSi
 """
 ELEMENT_SYMBOLS = {
     "S04": "S(6)",
-    "S(6)": "SO4"
 }
 

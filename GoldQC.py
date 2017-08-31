@@ -48,8 +48,7 @@ VAR_DESC_IND = 2  # the index for the description
 
 CONFIG = ConfigParser.ConfigParser()
 CONFIG.read("GoldQC.config")
-ELEMENTS = CONFIG.get("GoldSim", "elements")
-ELEMENTS = eval(ELEMENTS)
+ELEMENTS = eval(CONFIG.get("GoldSim", "elements"))
 LOG_FILE_NAME = CONFIG.get("GoldQC", "log_file")
 DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
 DB_PATH = CONFIG.get("phreeqc", "database")
@@ -70,12 +69,12 @@ def InitialChecks():
     global DEBUG_LEVEL
     global CONFIG
     global DB_PATH
-
+    global ELEMENTS
     # local imports
     import datetime
     from comtypes.client import CreateObject
-    with open("out.txt", 'w', 0) as debug:
-        debug.write("TEST\n")
+    from Converstions import ELEMENT_SYMBOLS
+
     debug_string = ''
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
@@ -98,7 +97,11 @@ def InitialChecks():
         debug_string += str("Error message: %s" % e)
         WriteStringToLog(debug_string)
         return 1
+    for element in ELEMENTS:
+        if element in ELEMENT_SYMBOLS:
+            ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
 
+    print ELEMENTS
     debug_string += str("Successfully Started GoldQC.py script at %s.\n\n" %
                         datetime.datetime.now().strftime("%x %H:%M"))
     WriteStringToLog(debug_string)
@@ -457,16 +460,16 @@ def process_input(input_string):
     from comtypes.client import CreateObject
 
     if not PHREEQC:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            try:
-                PHREEQC = CreateObject('IPhreeqcCOM.Object')
-                PHREEQC.LoadDatabase(DB_PATH)
-            except WindowsError as e:
+        try:
+            PHREEQC = CreateObject('IPhreeqcCOM.Object')
+            PHREEQC.LoadDatabase(DB_PATH)
+        except WindowsError as e:
+            with open(LOG_FILE_NAME, 'a', 0) as Log:
                 Log.write("Error restarting PHreeqc connection\n")
                 Log.write(str(e))
                 Log.write("Database is not connected or PHREEQC not running.\n")
 
-            return None
+        return None
     # noinspection PyBroadException
     PHREEQC.OutputStringOn = True
     try:
@@ -484,15 +487,15 @@ def process_input(input_string):
             Log.write(str('Warning at step %d: \n' % STEP))
             Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
-    with open("out.txt", 'a', 0) as debug:
-        debug.write(PHREEQC.GetOutputString().encode('utf8', 'replace'))
-    PHREEQC = None
+    # with open("out.txt", 'a', 0) as debug:
+    #     debug.write(PHREEQC.GetOutputString().encode('utf8', 'replace'))
     return output
 
 
 def WriteStringToLog(string):
     with open(LOG_FILE_NAME, 'a', 0) as Log:
         Log.write(string)
+
 
 def main():
     status = InitialChecks()
