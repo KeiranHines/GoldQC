@@ -35,12 +35,10 @@ https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll
 # ===========================================================================
 # imports
 import ConfigParser
-import ctypes
 
 # Module level globals.
 CUSTOM_MODULE_VERSION = 0.5
 PHREEQC = None
-GOLDSIM = ctypes.CDLL('GoldQC.dll')
 STEP = 0
 
 VECTOR_TYPE = "1-D Array"  # this is vector
@@ -54,6 +52,7 @@ ELEMENTS = CONFIG.get("GoldSim", "elements")
 ELEMENTS = eval(ELEMENTS)
 LOG_FILE_NAME = CONFIG.get("GoldQC", "log_file")
 DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
+DB_PATH = CONFIG.get("phreeqc", "database")
 
 IN_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "inputVector"]]
 RET_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "outputVector"]]
@@ -70,18 +69,19 @@ def InitialChecks():
     global PHREEQC
     global DEBUG_LEVEL
     global CONFIG
+    global DB_PATH
 
     # local imports
     import datetime
     from comtypes.client import CreateObject
-
+    with open("out.txt", 'w', 0) as debug:
+        debug.write("TEST\n")
     debug_string = ''
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
 
-    db_path = CONFIG.get("phreeqc", "database")
     if DEBUG_LEVEL:
-        debug_string += str("database path: %s\n" % str(db_path))
+        debug_string += str("database path: %s\n" % str(DB_PATH))
 
     try:
         PHREEQC = CreateObject('IPhreeqcCOM.Object')
@@ -92,9 +92,9 @@ def InitialChecks():
         return 1
 
     try:
-        PHREEQC.LoadDatabase(db_path)
+        PHREEQC.LoadDatabase(DB_PATH)
     except WindowsError as e:
-        debug_string += str("Error Could not load database file %s\n" % db_path)
+        debug_string += str("Error Could not load database file %s\n" % DB_PATH)
         debug_string += str("Error message: %s" % e)
         WriteStringToLog(debug_string)
         return 1
@@ -393,7 +393,8 @@ def MyCustomCalculations(input_list):
     #
     # i = 1
     # for element in element_dict:
-    #     input_string += str('\t' + str(i) + '0\tPUNCH TOT(\"' + element + '\") * ' + str(MOLAR_MASS_LIST[element]) + ' * 1000\n')
+    #     input_string += str('\t' + str(i) + '0\tPUNCH TOT(\"' + element + '\") * ' + str(MOLAR_MASS_LIST[element]) +
+    #                         ' * 1000\n')
     #     i += 1
     # input_string += '-end\n'
     # ----------------------------------------------------------------------------------
@@ -451,12 +452,15 @@ def process_input(input_string):
     global LOG_FILE_NAME
     global PHREEQC
     global STEP
+    global DB_PATH
+
     from comtypes.client import CreateObject
 
     if not PHREEQC:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             try:
                 PHREEQC = CreateObject('IPhreeqcCOM.Object')
+                PHREEQC.LoadDatabase(DB_PATH)
             except WindowsError as e:
                 Log.write("Error restarting PHreeqc connection\n")
                 Log.write(str(e))
@@ -464,6 +468,7 @@ def process_input(input_string):
 
             return None
     # noinspection PyBroadException
+    PHREEQC.OutputStringOn = True
     try:
         PHREEQC.RunString(input_string)
     except Exception:
@@ -479,13 +484,15 @@ def process_input(input_string):
             Log.write(str('Warning at step %d: \n' % STEP))
             Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
+    with open("out.txt", 'a', 0) as debug:
+        debug.write(PHREEQC.GetOutputString().encode('utf8', 'replace'))
+    PHREEQC = None
     return output
 
 
 def WriteStringToLog(string):
     with open(LOG_FILE_NAME, 'a', 0) as Log:
         Log.write(string)
-
 
 def main():
     status = InitialChecks()
