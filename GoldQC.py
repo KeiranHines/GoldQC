@@ -34,24 +34,37 @@ https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll
 """
 # ===========================================================================
 # imports
-import ConfigParser
+from ConfigParser import ConfigParser, NoOptionError
 
 # Module level globals.
 CUSTOM_MODULE_VERSION = 0.5
 PHREEQC = None
 STEP = 0
+ERRORS = 0
 
 VECTOR_TYPE = "1-D Array"  # this is vector
 VAR_CNT_IND = 0  # index of count
 VAR_TYPE_IND = 1  # index for the type
 VAR_DESC_IND = 2  # the index for the description
 
-CONFIG = ConfigParser.ConfigParser()
-CONFIG.read("GoldQC.config")
-ELEMENTS = eval(CONFIG.get("GoldSim", "elements"))
-LOG_FILE_NAME = CONFIG.get("GoldQC", "log_file")
-DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
-DB_PATH = CONFIG.get("phreeqc", "database")
+CONFIG = ConfigParser()
+conf_check = CONFIG.read("GoldQC.config")
+if not len(conf_check):
+    raise Exception("Error: Config file GoldQC.Config could not be read")
+try:
+    try:
+        ELEMENTS = eval(CONFIG.get("GoldSim", "elements"))
+    except SyntaxError as syn:
+        exit("Error parsing elements in config: potentially missing ]")
+    except NameError as name:
+        exit("Error parsing elements in config: a non-string was encountered")
+    if not all(isinstance(item, str) for item in ELEMENTS):
+        exit("Error an element listed in the config is not in string format (double or single quotes)")
+    LOG_FILE_NAME = CONFIG.get("GoldQC", "log_file")
+    DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
+    DB_PATH = CONFIG.get("phreeqc", "database")
+except NoOptionError as error:
+    exit(error)
 
 IN_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "inputVector"]]
 RET_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "outputVector"]]
@@ -70,12 +83,14 @@ def InitialChecks():
     global CONFIG
     global DB_PATH
     global ELEMENTS
+
     # local imports
     import datetime
     from comtypes.client import CreateObject
     from Converstions import ELEMENT_SYMBOLS
 
     debug_string = ''
+
     with open(LOG_FILE_NAME, 'w', 0) as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
 
@@ -319,8 +334,13 @@ def WrapUpStuff():
     Required to end off the log file with completion time and any other useful information
     :return: None
     """
+
+    global ERRORS
     # local imports
     import datetime
+    if ERRORS:
+        WriteStringToLog("TEST")
+        exit(-2)
     with open(LOG_FILE_NAME, 'a', 0) as Log:
         Log.write("GoldQC.py completed successfully at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
     return
@@ -355,6 +375,7 @@ def MyCustomCalculations(input_list):
     global LOG_FILE_NAME
     global STEP
     global DEBUG_LEVEL
+    global ERRORS
 
     import re
     from collections import OrderedDict
@@ -414,6 +435,8 @@ def MyCustomCalculations(input_list):
     if phreeqc_values is None:
         WriteStringToLog(debug_string)
         STEP += 1
+        ERRORS = 1
+
         return [-2]
 
     # Processing PHREEQC output to GoldSim format
@@ -456,6 +479,7 @@ def process_input(input_string):
     global PHREEQC
     global STEP
     global DB_PATH
+    global ERRORS
 
     from comtypes.client import CreateObject
 
@@ -470,17 +494,17 @@ def process_input(input_string):
                 Log.write("Database is not connected or PHREEQC not running.\n")
 
         return None
+    # PHREEQC.OutputStringOn = True
     # noinspection PyBroadException
-    PHREEQC.OutputStringOn = True
     try:
         PHREEQC.RunString(input_string)
     except Exception:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write(str('Error at step %d: \n' % STEP))
-            error = PHREEQC.GetErrorString()
-            if error:
-                Log.write(error)
-                return None
+            phreeqc_error = PHREEQC.GetErrorString()
+            if phreeqc_error:
+                ERRORS = 1
+                Log.write(phreeqc_error)
     warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim
     if warning:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
@@ -501,10 +525,10 @@ def main():
     status = InitialChecks()
     if status:
         exit(status)
-    test_list = [["0.12", "323", "458", "4.32", "0.34", "1.23", "95.6554"], 200.0]
+    test_list = [["0.12", "323", "458", "4.32", "0.34", "1.23", "95.6554"]]
     output = MyCustomCalculations(test_list)
     print output
-    test_list2 = [["0.13", "343", "4438", "34232", "0.33244", "1.2343", "95.6532454"], 200.0]
+    test_list2 = [["0.13", "343", "4438", "34232", "0.33244", "1.2343", "95.6532454"]]
     output = MyCustomCalculations(test_list2)
     print output
     WrapUpStuff()
