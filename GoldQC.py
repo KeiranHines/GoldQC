@@ -3,7 +3,7 @@
 Python Module: GoldQC.py
 Created by: Keiran Hines, RMIT
 Creation Date: 14/08/2017
-Last Edited: 28/08/2017
+Last Edited: 01/09/2017
 
 
 Copyright 2017, Keiran Hines
@@ -37,7 +37,7 @@ https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll
 from ConfigParser import ConfigParser, NoOptionError
 
 # Module level globals.
-CUSTOM_MODULE_VERSION = 0.5
+CUSTOM_MODULE_VERSION = 0.1
 PHREEQC = None
 STEP = 0
 ERRORS = 0
@@ -65,7 +65,32 @@ try:
     DB_PATH = CONFIG.get("phreeqc", "database")
 except NoOptionError as error:
     exit(error)
-
+try:
+    PH = CONFIG.get("phreeqc", "pH")
+    if not PH:
+        PH = '7'
+except NoOptionError:
+    PH = 7
+try:
+    PE = CONFIG.get("phreeqc", "pe")
+    if not PE:
+        PE = '4'
+except NoOptionError:
+    PE = 4
+try:
+    REDOX = CONFIG.get("phreeqc", "redox")
+    if not REDOX:
+        REDOX = 'pe'
+    else:
+        REDOX = eval(REDOX)
+except NoOptionError:
+    REDOX = 'pe'
+try:
+    TEMP = CONFIG.get("phreeqc", "temp")
+    if not TEMP:
+        TEMP = '25'
+except NoOptionError:
+    TEMP = 25
 IN_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "inputVector"]]
 RET_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "outputVector"]]
 
@@ -115,8 +140,6 @@ def InitialChecks():
     for element in ELEMENTS:
         if element in ELEMENT_SYMBOLS:
             ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
-
-    print ELEMENTS
     debug_string += str("Successfully Started GoldQC.py script at %s.\n\n" %
                         datetime.datetime.now().strftime("%x %H:%M"))
     WriteStringToLog(debug_string)
@@ -373,7 +396,7 @@ def MyCustomCalculations(input_list):
     """
     # globals
     global LOG_FILE_NAME
-    global STEP
+    global STEP, PH, PE, REDOX, TEMP
     global DEBUG_LEVEL
     global ERRORS
 
@@ -391,8 +414,13 @@ def MyCustomCalculations(input_list):
         debug_string += str("Element Symbols: %s\n" % str(ELEMENTS))
         debug_string += str("Element Values:  %s\n" % str(element_values))
     input_string = ('SOLUTION %d\n'
-                    '\tunits\tmg/l\n'
-                    '\twater\t\t1\n' % STEP)
+                    '\ttemp\t\t%s\n'
+                    '\tpH\t\t\t%s\n'
+                    '\tpe\t\t\t%s\n'
+                    '\tredox\t\t%s\n'
+                    '\tunits\t\tmg/l\n'
+                    '\tdensity\t\t1\n'
+                    '\t-water\t\t1\n' % (STEP, TEMP, PH, PE, REDOX))
     element_dict = OrderedDict(zip(ELEMENTS, element_values))
 
     # Need to refactor based on final GoldSim inputs
@@ -439,6 +467,16 @@ def MyCustomCalculations(input_list):
 
         return [-2]
 
+    # 1500 ERROR DEBUG ---------------------------------------------------------
+    WriteStringToLog("Step " + str(STEP) + '\n')
+    from prettytable import PrettyTable
+    t = PrettyTable(list(phreeqc_values[0]))
+    for a in phreeqc_values[1:]:
+        t.add_row(list(a))
+    # t.add_row(list(phreeqc_values[1]))
+    # t.add_row(list(phreeqc_values[2]))
+    WriteStringToLog(str(t) + '\n')
+    # END OF DEBUG --------------------------------------------------------------
     # Processing PHREEQC output to GoldSim format
     headings = list(phreeqc_values[0])[-len(element_values):]
     values = list(phreeqc_values[2])[-len(element_values):]
@@ -525,12 +563,14 @@ def main():
     status = InitialChecks()
     if status:
         exit(status)
+    global ELEMENTS
+    ELEMENTS = ['Al', 'Ca', 'Mg', 'Na', 'S(6)', 'Cl', 'Br']
     test_list = [["0.12", "323", "458", "4.32", "0.34", "1.23", "95.6554"]]
     output = MyCustomCalculations(test_list)
-    print output
+    if output:
+        print "Success! Everything is setup and ready to use"
     test_list2 = [["0.13", "343", "4438", "34232", "0.33244", "1.2343", "95.6532454"]]
     output = MyCustomCalculations(test_list2)
-    print output
     WrapUpStuff()
 
 
