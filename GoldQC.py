@@ -37,10 +37,12 @@ https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll
 from ConfigParser import ConfigParser, NoOptionError
 
 # Module level globals.
-CUSTOM_MODULE_VERSION = 0.1
+GOLDQC_Version = 0.2
 PHREEQC = None
 STEP = 0
 ERRORS = 0
+PHREEQC_SPECS = ''
+EQ_PHASES = ''
 
 VECTOR_TYPE = "1-D Array"  # this is vector
 VAR_CNT_IND = 0  # index of count
@@ -57,14 +59,19 @@ try:
     except SyntaxError as syn:
         exit("Error parsing elements in config: potentially missing ]")
     except NameError as name:
-        exit("Error parsing elements in config: a non-string was encountered")
+        exit("Error parsing elements in config: a non-string object was encountered")
     if not all(isinstance(item, str) for item in ELEMENTS):
         exit("Error an element listed in the config is not in string format (double or single quotes)")
     LOG_FILE_NAME = CONFIG.get("GoldQC", "log_file")
-    DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
     DB_PATH = CONFIG.get("phreeqc", "database")
 except NoOptionError as error:
     exit(error)
+try:
+    DEBUG_LEVEL = int(CONFIG.get("GoldQC", "debug_level"))
+except ValueError:
+    DEBUG_LEVEL = 0
+except NoOptionError:
+    DEBUG_LEVEL = 0
 try:
     PH = CONFIG.get("phreeqc", "pH")
     if not PH:
@@ -91,6 +98,15 @@ try:
         TEMP = '25'
 except NoOptionError:
     TEMP = 25
+try:
+    EQ = eval(CONFIG.get("phreeqc", "equilibrium_phases"))
+except NoOptionError:
+    EQ = [["Gypsum", 0, 0]]
+except SyntaxError as syn:
+    exit("Error parsing elements in config: potentially missing ]")
+except NameError as name:
+    exit("Error parsing elements in config: a non-string object was encountered")
+
 IN_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "inputVector"]]
 RET_VAR_LIST = [[len(ELEMENTS), VECTOR_TYPE, "outputVector"]]
 
@@ -105,9 +121,7 @@ def InitialChecks():
     global LOG_FILE_NAME
     global PHREEQC
     global DEBUG_LEVEL
-    global CONFIG
-    global DB_PATH
-    global ELEMENTS
+    global DB_PATH, ELEMENTS, PHREEQC_SPECS, EQ_PHASES
 
     # local imports
     import datetime
@@ -140,6 +154,13 @@ def InitialChecks():
     for element in ELEMENTS:
         if element in ELEMENT_SYMBOLS:
             ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
+    PHREEQC_SPECS = ('\ttemp\t\t%s\n'
+                     '\tpH\t\t\t%s\n'
+                     '\tpe\t\t\t%s\n'
+                     '\tredox\t\t%s\n' % (TEMP, PH, PE, REDOX))
+    EQ_PHASES = str('EQUILIBRIUM_PHASES\n')
+    for e in EQ:
+        EQ_PHASES += ('\t%s\t%s\t%s\n' % (e[0], e[1], e[2]))
     debug_string += str("Successfully Started GoldQC.py script at %s.\n\n" %
                         datetime.datetime.now().strftime("%x %H:%M"))
     WriteStringToLog(debug_string)
@@ -153,7 +174,7 @@ def PyModuleVersion():
     
     :return:    Version number --- will be cast to a double later
     """
-    return CUSTOM_MODULE_VERSION
+    return GOLDQC_Version
 
 
 def CalcInputs():
@@ -396,7 +417,7 @@ def MyCustomCalculations(input_list):
     """
     # globals
     global LOG_FILE_NAME
-    global STEP, PH, PE, REDOX, TEMP
+    global STEP, PHREEQC_SPECS, EQ_PHASES
     global DEBUG_LEVEL
     global ERRORS
 
@@ -414,21 +435,18 @@ def MyCustomCalculations(input_list):
         debug_string += str("Element Symbols: %s\n" % str(ELEMENTS))
         debug_string += str("Element Values:  %s\n" % str(element_values))
     input_string = ('SOLUTION %d\n'
-                    '\ttemp\t\t%s\n'
-                    '\tpH\t\t\t%s\n'
-                    '\tpe\t\t\t%s\n'
-                    '\tredox\t\t%s\n'
+
                     '\tunits\t\tmg/l\n'
                     '\tdensity\t\t1\n'
-                    '\t-water\t\t1\n' % (STEP, TEMP, PH, PE, REDOX))
+                    '\t-water\t\t1\n' % STEP)
+    input_string += PHREEQC_SPECS
     element_dict = OrderedDict(zip(ELEMENTS, element_values))
 
     # Need to refactor based on final GoldSim inputs
     for element, value in element_dict.iteritems():
         input_string += str('\t' + element + '\t\t' + str(value) + '\n')
 
-    input_string += str('EQUILIBRIUM_PHASES\n\tGypsum\t0\t0\n')
-
+    input_string += EQ_PHASES
     # ---------------------------------------------------------------------------------
     # TOTALS MODE
     input_string += str('SELECTED_OUTPUT\n\t-totals ')
@@ -451,7 +469,7 @@ def MyCustomCalculations(input_list):
     # input_string += '-end\n'
     # ----------------------------------------------------------------------------------
     input_string += '\nEND\n'
-
+    print input_string
     # Input string created, Logging details.
     if DEBUG_LEVEL:
         debug_string += str('Input on Step %d\n' % STEP)
@@ -468,11 +486,11 @@ def MyCustomCalculations(input_list):
         return [-2]
 
     # 1500 ERROR DEBUG ---------------------------------------------------------
-    WriteStringToLog("Step " + str(STEP) + '\n')
-    from prettytable import PrettyTable
-    t = PrettyTable(list(phreeqc_values[0]))
-    for a in phreeqc_values[1:]:
-        t.add_row(list(a))
+    # WriteStringToLog("Step " + str(STEP) + '\n')
+    # from prettytable import PrettyTable
+    # t = PrettyTable(list(phreeqc_values[0]))
+    # for a in phreeqc_values[1:]:
+    #     t.add_row(list(a))
     # t.add_row(list(phreeqc_values[1]))
     # t.add_row(list(phreeqc_values[2]))
     WriteStringToLog(str(t) + '\n')
@@ -569,8 +587,6 @@ def main():
     output = MyCustomCalculations(test_list)
     if output:
         print "Success! Everything is setup and ready to use"
-    test_list2 = [["0.13", "343", "4438", "34232", "0.33244", "1.2343", "95.6532454"]]
-    output = MyCustomCalculations(test_list2)
     WrapUpStuff()
 
 
