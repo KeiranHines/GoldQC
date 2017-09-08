@@ -51,7 +51,7 @@ void CopyMsgToOutputs(const char* sMsg, double* outargs) {
     strncpy(sBuffer, sMsg, sizeof(sBuffer) - 1);
     // Copy the static buffer pointer to the first output array
     // element.
-    *pAddr = (unsigned long int*) sBuffer;
+    pAddr = (unsigned long int*) sBuffer;
 }
 
 //EOF
