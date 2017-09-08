@@ -28,13 +28,12 @@ Provides communication between GoldSim and PHREEQC for the purpose of
 verifying the chemical balance of a solution. This is linked using the GoldSim
 external element and PHREEQC's COM connection (IPHREEQC).
 This file was developed using the guide created by GoldSim Technologies Group
-by combining the GoldQC.py and TestModule.py files
-Available at:
+by combining the ideas of CustomPython.py and TestModule.py available at:
 https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll/
 """
 # ===========================================================================
 # imports
-from ConfigParser import ConfigParser, NoOptionError
+from ConfigParser import ConfigParser, NoOptionError, NoSectionError
 
 # Module level globals.
 GOLDQC_Version = 0.5
@@ -80,28 +79,32 @@ def parseConfig():
     conf_check = config.read("GoldQC.config")
     if not len(conf_check):
         raise Exception("Error: Config file GoldQC.Config could not be read")
+
     try:
-        try:
-            ELEMENTS = config.get("GoldSim", "elements")
-            if not ELEMENTS:
-                exit("Error elements not specified")
-            else:
-                ELEMENTS = eval(ELEMENTS)
-        except SyntaxError:
-            exit("Error parsing elements in config: potentially missing ]")
-        except NameError:
-            exit("Error parsing elements in config: a non-string object was encountered")
-        if not all(isinstance(item, str) for item in ELEMENTS):
-            exit("Error an element listed in the config is not in string format (double or single quotes)")
-        LOG_FILE_NAME = config.get("GoldQC", "log_file")
-        DB_PATH = config.get("phreeqc", "database")
+        ELEMENTS = config.get("GoldSim", "elements")
+        if not ELEMENTS:
+            exit("Error elements not specified")
+        else:
+            ELEMENTS = eval(ELEMENTS)
+    except SyntaxError:
+        exit("Error parsing elements in config: potentially missing ]")
+    except NameError:
+        exit("Error parsing elements in config: a non-string object was encountered")
     except NoOptionError:
         exit("Error Elements are not specified.")
+    if not all(isinstance(item, str) for item in ELEMENTS):
+        exit("Error an element listed in the config is not in string format (double or single quotes)")
+    try:
+        DB_PATH = config.get("phreeqc", "database")
+    except NoSectionError:
+        exit("Error no database file specified.")
+    try:
+        LOG_FILE_NAME = config.get("GoldQC", "log_file")
+    except (NoOptionError, ValueError, NoSectionError):
+        LOG_FILE_NAME = 'GoldQC.log'
     try:
         DEBUG_LEVEL = int(config.get("GoldQC", "debug_level"))
-    except ValueError:
-        DEBUG_LEVEL = 0
-    except NoOptionError:
+    except (ValueError, NoOptionError, NoSectionError):
         DEBUG_LEVEL = 0
     try:
         PH = config.get("phreeqc", "pH")
