@@ -40,19 +40,29 @@ by combining the ideas of CustomPython.py and TestModule.py available at:
 https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll/
 """
 # ===========================================================================
-# imports
+import datetime
+import re
 from ConfigParser import ConfigParser, NoOptionError, NoSectionError
+from collections import OrderedDict
+
+from comtypes.client import CreateObject
+from prettytable import PrettyTable
+
+from Converstions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
 
 # Module level globals.
-GOLDQC_Version = 0.5
+GOLDQC_VERSION = 0.9
 PHREEQC = None
 STEP = 0
 ERRORS = 0
+WARNINGS = 0
 PHREEQC_SPECS = ''
 EQ_PHASES = ''
+TOTALS = ''
 LOG_FILE_NAME = 'logFile.txt'
 DB_PATH = None
 DEBUG_LEVEL = 0
+SUPPRESS_WARNINGS = False
 
 # PHREEQC variables to be populated by parseConfig
 ELEMENTS = []
@@ -61,7 +71,7 @@ PE = 4
 REDOX = 'pe'
 TEMP = 25
 CHARGE = None
-EQ_OPTIONS = [[]]
+EQ_OPTIONS = [["Gypsum", 0, 0]]
 
 # GoldSim specific constants and variables
 VECTOR_TYPE = "1-D Array"  # this is vector
@@ -79,7 +89,7 @@ def parseConfig():
 
     :return: None
     """
-    global LOG_FILE_NAME, DB_PATH, DEBUG_LEVEL
+    global LOG_FILE_NAME, DB_PATH, DEBUG_LEVEL, SUPPRESS_WARNINGS
     global ELEMENTS, PH, PE, REDOX, TEMP, CHARGE, EQ_OPTIONS
     global IN_VAR_LIST, RET_VAR_LIST
     # Parsing config file and sanitising configuration variables
@@ -115,6 +125,16 @@ def parseConfig():
     except (ValueError, NoOptionError, NoSectionError):
         DEBUG_LEVEL = 0
     try:
+        t = config.get("GoldQC", "suppress_warnings")
+        if t:
+            SUPPRESS_WARNINGS = eval(t)
+            if not isinstance(SUPPRESS_WARNINGS, bool):
+                SUPPRESS_WARNINGS = False
+        else:
+            SUPPRESS_WARNINGS = False
+    except NoOptionError:
+        SUPPRESS_WARNINGS = False
+    try:
         PH = config.get("phreeqc", "pH")
         if not PH:
             PH = '7'
@@ -149,11 +169,9 @@ def parseConfig():
     except NoOptionError:
         CHARGE = None
     try:
-        temp = config.get("phreeqc", "equilibrium_phases")
-        if EQ_OPTIONS:
-            EQ_OPTIONS = eval(temp)
-        else:
-            EQ_OPTIONS = [["Gypsum", 0, 0]]
+        t = config.get("phreeqc", "equilibrium_phases")
+        if t:
+            EQ_OPTIONS = eval(t)
     except NoOptionError:
         EQ_OPTIONS = [["Gypsum", 0, 0]]
     except SyntaxError:
@@ -175,48 +193,41 @@ def InitialChecks():
     global LOG_FILE_NAME
     global PHREEQC
     global DEBUG_LEVEL
-    global DB_PATH, ELEMENTS, PHREEQC_SPECS, EQ_PHASES
-
-    # local imports
-    import datetime
-    from comtypes.client import CreateObject
-    from Converstions import ELEMENT_SYMBOLS
+    global DB_PATH, ELEMENTS, PHREEQC_SPECS, EQ_PHASES, TOTALS
 
     debug_string = ''
-
-    with open(LOG_FILE_NAME, 'w', 0) as Log:
+    with open(LOG_FILE_NAME, 'w') as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
     if DEBUG_LEVEL:
-        debug_string += str("database path: %s\n" % str(DB_PATH))
+        debug_string += "database path: %s\n" % str(DB_PATH)
 
     try:
         PHREEQC = CreateObject('IPhreeqcCOM.Object')
     except WindowsError as e:
-        debug_string += str("Error Could not find IPhreeqcCOM, are you sure its installed?\n")
-        debug_string += str("Error Message: %s\n" % e)
-        WriteStringToLog(debug_string)
+        debug_string += "Error Could not find IPhreeqcCOM, are you sure its installed?\n" \
+                        "Error Message: %s\n" % e
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(debug_string)
         return 1
 
     try:
         PHREEQC.LoadDatabase(DB_PATH)
     except WindowsError as e:
-        debug_string += str("Error Could not load database file %s\n" % DB_PATH)
-        debug_string += str("Error message: %s" % e)
-        WriteStringToLog(debug_string)
+        debug_string += "Error Could not load database file %s\n" \
+                        "Error message: %s" % (DB_PATH, e)
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(debug_string)
         return 1
     for element in ELEMENTS:
         if element in ELEMENT_SYMBOLS:
             ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
-    PHREEQC_SPECS = ('\ttemp\t\t%s\n'
-                     '\tpH\t\t\t%s\n'
-                     '\tpe\t\t\t%s\n'
-                     '\tredox\t\t%s\n' % (TEMP, PH, PE, REDOX))
-    EQ_PHASES = str('EQUILIBRIUM_PHASES\n')
-    for e in EQ_OPTIONS:
-        EQ_PHASES += ('\t%s\t%s\t%s\n' % (e[0], e[1], e[2]))
-    debug_string += str("Successfully Started GoldQC.py script at %s.\n\n" %
-                        datetime.datetime.now().strftime("%x %H:%M"))
-    WriteStringToLog(debug_string)
+    PHREEQC_SPECS = ('\ttemp\t\t%s\n\tpH\t\t\t%s\n\tpe\t\t\t%s\n\tredox\t\t%s\n' % (TEMP, PH, PE, REDOX))
+    EQ_PHASES = 'EQUILIBRIUM_PHASES\n%s' % "".join(['\t%s\t%s\t%s\n' % (e[0], e[1], e[2]) for e in EQ_OPTIONS])
+    TOTALS = "".join(['%s ' % s for s in ELEMENTS])
+    debug_string += "Successfully Started GoldQC.py script at %s.\n\n" % \
+                    datetime.datetime.now().strftime("%x %H:%M")
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write(debug_string)
     return 0
 
 
@@ -227,7 +238,7 @@ def PyModuleVersion():
     
     :return:    Version number --- will be cast to a double later
     """
-    return GOLDQC_Version
+    return GOLDQC_VERSION
 
 
 def CalcInputs():
@@ -269,22 +280,19 @@ def CustomCalculations(input_list, num_return):
     start_index = 0  # the starting index for the input.
     tst_indexes = list()  # the indexes for testing
     py_input_list = list()  # inputs in Python list format
-    current_indexes = 0
 
     tst_indexes.append(0)
-    for ThisList in IN_VAR_LIST:
-        current_type = str(ThisList[VAR_TYPE_IND])
-        if current_type == VECTOR_TYPE:
-            current_indexes = int(ThisList[VAR_CNT_IND])
-            var_in_list = input_list[start_index:(start_index + current_indexes)]
-            input_vector = var_in_list
-            py_input_list.append(input_vector)
-        start_index = start_index + current_indexes
-        tst_indexes.append(start_index)
+    current_indexes = int(IN_VAR_LIST[0][VAR_CNT_IND])
+    var_in_list = input_list[start_index:(start_index + current_indexes)]
+    input_vector = var_in_list
+    py_input_list.append(input_vector)
+    start_index = start_index + current_indexes
+    tst_indexes.append(start_index)
 
     ret_var_list = MyCustomCalculations(py_input_list)
     if not isinstance(ret_var_list, list):
-        WriteStringToLog("ERROR")
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("ERROR")
         return -1
     if len(ret_var_list) != num_output_vars:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
@@ -311,14 +319,18 @@ def WrapUpStuff():
     :return: None
     """
 
-    global ERRORS
+    global ERRORS, WARNINGS
     # local imports
-    import datetime
     if ERRORS:
-        WriteStringToLog("Error: GoldQC failed to run successfully at %s.\n" %
-                         datetime.datetime.now().strftime("%x %H:%M"))
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write("Error: GoldQC enocunterd some error(s). Please check the log")
         exit(-1)
-    WriteStringToLog("GoldQC.py completed successfully at %s.\n" % datetime.datetime.now().strftime("%x %H:%M"))
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        if WARNINGS:
+            Log.write("GoldQC completed successfully but with warnings at %s.\n" %
+                      datetime.datetime.now().strftime("%x %H:%M"))
+        else:
+            Log.write("GoldQC completed successfully at %s.\n" % datetime.datetime.now().strftime("%x %H:%M"))
     return
 
 
@@ -334,7 +346,8 @@ def PythonInitializationError():
     debug_string += str("in your Python module to test and to ensure that it \n")
     debug_string += str("runs without error.\n")
 
-    WriteStringToLog(debug_string)
+    with open(LOG_FILE_NAME, 'a', 0) as Log:
+        Log.write(debug_string)
     return
 
 
@@ -347,10 +360,6 @@ def MyCustomCalculations(input_list):
 
     :return: return_list A list of the output values which needs to be in the format expected by RET_VAR_LIST
     """
-    import re
-    from collections import OrderedDict
-    from Converstions import MOLAR_MASS_LIST
-    from prettytable import PrettyTable
 
     # globals
     global LOG_FILE_NAME
@@ -361,51 +370,38 @@ def MyCustomCalculations(input_list):
     debug_string = ''
 
     if DEBUG_LEVEL:
-        debug_string += str("Step %d\n" % STEP)
+        debug_string += "Step %d\n" % STEP
     element_values = input_list[0]
 
     if DEBUG_LEVEL:
         debug_string += "Input Values:\n"
         table = PrettyTable(["Element"] + ELEMENTS)
         table.add_row(["Value"] + element_values)
-        debug_string += str(table)+'\n\n'
+        debug_string += '%s\n\n' % table
 
     # Creating input string for input to PHREEQC
-    input_string = ('SOLUTION %d\n'
-                    '\tunits\t\tmg/l\n'
-                    '\tdensity\t\t1\n'
-                    '\t-water\t\t1\n' % STEP)
-    input_string += PHREEQC_SPECS
-
-    for element, value in OrderedDict(zip(ELEMENTS, element_values)).items():
-        # Checking if an element in the solution needs to be marked as charge balance
-        if element == CHARGE:
-            input_string += str('\t' + element + '\t\t\t' + str(value) + '\t charge''\n')
-        else:
-            input_string += str('\t' + element + '\t\t\t' + str(value) + '\n')
-
-    # Checking if an element not in the input is being used as a charge balance.
+    items = OrderedDict(zip(ELEMENTS, element_values))
+    if CHARGE in ELEMENTS:
+        items[CHARGE] = "%s\tcharge" % items[CHARGE]
     if CHARGE not in ELEMENTS and CHARGE:
-        input_string += str('\t' + CHARGE + '\t\t0\tcharge\n')
-    input_string += EQ_PHASES
-    input_string += str('SELECTED_OUTPUT\n'
-                        '\t-water\t\ttrue\n'
-                        '\t-totals ')
-    for element in ELEMENTS:
-        input_string += str(element + ' ')
-
-    input_string += '\nEND\n\n'
+        items.update({CHARGE: '0\tcharge'})
+    input_string = 'SOLUTION %d\n\tunits\t\tmg/l\n\tdensity\t\t1\n\t-water\t\t1\n' \
+                   '%s%s%sSELECTED_OUTPUT\n\t-water\t\ttrue\n\t-totals %s\nEND\n\n' % \
+                   (STEP, PHREEQC_SPECS,
+                    "".join(['\t%s\t\t\t%s\n' % (element, value) for element, value in items.items()]),
+                    EQ_PHASES, TOTALS)
 
     # Input string created, Logging details.
     if DEBUG_LEVEL > 1:
-        debug_string += str(input_string)
+        debug_string += input_string
 
     # calling PHREEQC
     phreeqc_values = process_input(input_string)
 
     # Confirming PHREEQC did not return an error.
     if phreeqc_values is None or not phreeqc_values:
-        WriteStringToLog(debug_string)
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(debug_string)
         STEP += 1
         ERRORS = 1
         return -1
@@ -413,13 +409,13 @@ def MyCustomCalculations(input_list):
     # Processing PHREEQC output to GoldSim format
     headings = list(phreeqc_values[0])[-len(element_values):]
     values = list(phreeqc_values[2])[-len(element_values):]
-    water = list(phreeqc_values[2])[-len(element_values)-1]
+    water = list(phreeqc_values[2])[-len(element_values) - 1]
     raw_values = list(values)
     # Converting mol/kgw to mg/l ONLY NEEDED IN TOTALS MODE
     i = 0
     while i < len(headings):
         headings[i] = re.sub('\(mol/kgw\)$', '', headings[i])
-        values[i] = float(values[i] * MOLAR_MASS_LIST[headings[i]] * 1000.0 * float(1/water))
+        values[i] = float(values[i] * MOLAR_MASS_LIST[headings[i]] * 1000.0 * float(1 / water))
         i += 1
 
     # Formatting values into GoldSim required format
@@ -430,8 +426,9 @@ def MyCustomCalculations(input_list):
         table = PrettyTable(["Element"] + headings)
         table.add_row(["mg/l"] + raw_values)
         table.add_row(["mol/kg"] + values)
-        debug_string += str(table) + '\n\n'
-        WriteStringToLog(debug_string)
+        debug_string += '%s\n\n' % table
+        with open(LOG_FILE_NAME, 'a', 0) as Log:
+            Log.write(debug_string)
 
     STEP += 1
     return return_list
@@ -447,11 +444,7 @@ def process_input(input_string):
     """
 
     # globals
-    global LOG_FILE_NAME
-    global PHREEQC
-    global STEP
-    global DB_PATH
-    global ERRORS
+    global LOG_FILE_NAME, PHREEQC, STEP, DB_PATH, ERRORS, WARNINGS, SUPPRESS_WARNINGS
 
     from comtypes.client import CreateObject
 
@@ -464,7 +457,6 @@ def process_input(input_string):
                 Log.write("Error restarting PHreeqc connection\n")
                 Log.write(str(e))
                 Log.write("Database is not connected or PHREEQC not running.\n")
-
         return None
     # PHREEQC.OutputStringOn = True
     # noinspection PyBroadException
@@ -479,18 +471,15 @@ def process_input(input_string):
                 Log.write(phreeqc_error)
     warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim
     if warning:
-        with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write(str('Warning at step %d: \n' % STEP))
-            Log.write(warning)
+        WARNINGS = 1
+        if not SUPPRESS_WARNINGS or DEBUG_LEVEL:
+            with open(LOG_FILE_NAME, 'a', 0) as Log:
+                Log.write('Warning at step %d: \n' % STEP)
+                Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
     # with open("out.txt", 'a', 0) as debug:
     #     debug.write(PHREEQC.GetOutputString().encode('utf8', 'replace'))
     return output
-
-
-def WriteStringToLog(string):
-    with open(LOG_FILE_NAME, 'a', 0) as Log:
-        Log.write(string)
 
 
 def main():
@@ -506,6 +495,8 @@ def main():
     else:
         print "Error: Something went wrong. Check the log."
     WrapUpStuff()
+
+
 # Calling parseConfig as file is loaded to avoid error with GoldSim requiring number of inputs and outputs
 parseConfig()
 
