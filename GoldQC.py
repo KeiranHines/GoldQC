@@ -51,7 +51,7 @@ from prettytable import PrettyTable
 from Converstions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
 
 # Module level globals.
-GOLDQC_VERSION = 1.0
+GOLDQC_VERSION = 0.9
 PHREEQC = None
 STEP = 0
 ERRORS = 0
@@ -391,7 +391,6 @@ def MyCustomCalculations(input_list):
                     "".join(['\t%s\t\t\t%s\n' % (element, value) for element, value in items.items()]),
                     EQ_PHASES, TOTALS)
 
-    print input_string
     # Input string created, Logging details.
     if DEBUG_LEVEL > 1:
         debug_string += input_string
@@ -473,7 +472,7 @@ def process_input(input_string):
     warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim
     if warning:
         WARNINGS = 1
-        if not SUPPRESS_WARNINGS:
+        if not SUPPRESS_WARNINGS or DEBUG_LEVEL:
             with open(LOG_FILE_NAME, 'a', 0) as Log:
                 Log.write('Warning at step %d: \n' % STEP)
                 Log.write(warning)
