@@ -48,7 +48,7 @@ from collections import OrderedDict
 from comtypes.client import CreateObject
 from prettytable import PrettyTable
 
-from Converstions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
+from Conversions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
 
 # Module level globals.
 GOLDQC_VERSION = 0.9
