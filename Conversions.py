@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Python Module: Converstions.py
+Python Module: Conversions.py
 Created by: Keiran Hines, RMIT
 Creation Date: 21/08/2017
 

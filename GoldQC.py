@@ -48,10 +48,10 @@ from collections import OrderedDict
 from comtypes.client import CreateObject
 from prettytable import PrettyTable
 
-from Converstions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
+from Conversions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
 
 # Module level globals.
-GOLDQC_VERSION = 0.9
+GOLDQC_VERSION = 0.92
 PHREEQC = None
 STEP = 0
 ERRORS = 0
@@ -221,9 +221,16 @@ def InitialChecks():
     for element in ELEMENTS:
         if element in ELEMENT_SYMBOLS:
             ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
-    PHREEQC_SPECS = ('\ttemp\t\t%s\n\tpH\t\t\t%s\n\tpe\t\t\t%s\n\tredox\t\t%s\n' % (TEMP, PH, PE, REDOX))
+    if 'pH' in ELEMENTS:
+        PHREEQC_SPECS = ('\ttemp\t\t%s\n\tpe\t\t\t%s\n\tredox\t\t%s\n' % (TEMP, PE, REDOX))
+        TOTALS = "".join(['%s ' % s for s in ELEMENTS if s != 'pH'])
+
+    else:
+        PHREEQC_SPECS = ('\ttemp\t\t%s\n\tpH\t\t\t%s\n\tpe\t\t\t%s\n\tredox\t\t%s\n' % (TEMP, PH, PE, REDOX))
+        TOTALS = "".join(['%s ' % s for s in ELEMENTS])
+
     EQ_PHASES = 'EQUILIBRIUM_PHASES\n%s' % "".join(['\t%s\t%s\t%s\n' % (e[0], e[1], e[2]) for e in EQ_OPTIONS])
-    TOTALS = "".join(['%s ' % s for s in ELEMENTS])
+
     debug_string += "Successfully Started GoldQC.py script at %s.\n\n" % \
                     datetime.datetime.now().strftime("%x %H:%M")
     with open(LOG_FILE_NAME, 'a', 0) as Log:
@@ -407,9 +414,18 @@ def MyCustomCalculations(input_list):
         return -1
 
     # Processing PHREEQC output to GoldSim format
-    headings = list(phreeqc_values[0])[-len(element_values):]
-    values = list(phreeqc_values[2])[-len(element_values):]
-    water = list(phreeqc_values[2])[-len(element_values) - 1]
+    if 'pH' in ELEMENTS:
+        headings = list(phreeqc_values[0])[-len(element_values)+1:]
+        values = list(phreeqc_values[2])[-len(element_values)+1:]
+        water = list(phreeqc_values[2])[-len(element_values)]
+        ph =  list(phreeqc_values[2])[-len(element_values) - 2]
+
+    else:
+        headings = list(phreeqc_values[0])[-len(element_values):]
+        values = list(phreeqc_values[2])[-len(element_values):]
+        water = list(phreeqc_values[2])[-len(element_values)-1]
+        ph = list(phreeqc_values[2])[-len(element_values) - 3]
+
     raw_values = list(values)
     # Converting mol/kgw to mg/l ONLY NEEDED IN TOTALS MODE
     i = 0
@@ -420,12 +436,23 @@ def MyCustomCalculations(input_list):
 
     # Formatting values into GoldSim required format
     return_list = list()
-    return_list.append(values)
+
+    if 'pH' in ELEMENTS:
+        original_list = OrderedDict(zip(ELEMENTS, element_values))
+        phreq_list = OrderedDict(zip(headings, values))
+        for key in original_list.keys():
+            if key in phreq_list.keys():
+                original_list[key] = phreq_list[key]
+            else: #Should be pH the only element not in phreeqc totals that is in the Orginal List.
+                original_list[key] = ph
+        return_list.append(original_list.values())
+    else:
+        return_list.append(values)
+    print return_list
     if DEBUG_LEVEL:
         debug_string += "Output Values:\n"
-        table = PrettyTable(["Element"] + headings)
-        table.add_row(["mg/l"] + raw_values)
-        table.add_row(["mol/kg"] + values)
+        table = PrettyTable(["Element"] + ELEMENTS)
+        table.add_row(["mol/kg"] + return_list[0])
         debug_string += '%s\n\n' % table
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write(debug_string)
@@ -487,8 +514,8 @@ def main():
     if status:
         exit(status)
     global ELEMENTS, ERRORS
-    ELEMENTS = ['Al', 'Ca', 'Mg', 'Na', 'S(6)', 'Cl', 'Br']
-    test_list = [["0.12", "323", "458", "4.32", "0.34", "1.23", "95.6554"]]
+    ELEMENTS = ['Al', 'Ca', 'Mg', 'Na', 'pH', 'S(6)', 'Cl', 'Br']
+    test_list = [["0.12", "323", "458", "4.32", "6", "0.34", "1.23", "95.6554"]]
     output = MyCustomCalculations(test_list)
     if output and not ERRORS:
         print "Success! Everything is setup and ready to use"
