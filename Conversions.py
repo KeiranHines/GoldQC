@@ -2,7 +2,7 @@
 """
 Python Module: Conversions.py
 Created by: Keiran Hines, RMIT
-Creation Date: 21/08/2017
+Creation Date: 10/10/2017
 
 Copyright 2017, Keiran Hines
 This file is part of GoldQC.
@@ -157,4 +157,7 @@ ELEMENT_SYMBOLS: A lookup dictionary to convert common Element pairs from GoldSi
 """
 ELEMENT_SYMBOLS = {
     "S04": "S(6)",
+    "H": "pH",
+    "alk": "Alkalinity",
+    "Alk": "Alkalinity",
 }

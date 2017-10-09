@@ -2,7 +2,7 @@
 """
 Python Module: GoldQC.py
 Created by: Keiran Hines, RMIT
-Creation Date: 14/08/2017
+Creation Date: 10/10/2017
 
 Copyright 2017, Keiran Hines
 This file is part of GoldQC.
@@ -42,6 +42,7 @@ https://www.goldsim.com/library/models/featurescapabilities/dllscripts/pythondll
 # ===========================================================================
 import datetime
 import re
+from math import log10
 from ConfigParser import ConfigParser, NoOptionError, NoSectionError
 from collections import OrderedDict
 
@@ -51,7 +52,7 @@ from prettytable import PrettyTable
 from Conversions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
 
 # Module level globals.
-GOLDQC_VERSION = 0.92
+GOLDQC_VERSION = 0.93
 PHREEQC = None
 STEP = 0
 ERRORS = 0
@@ -63,6 +64,7 @@ LOG_FILE_NAME = 'logFile.txt'
 DB_PATH = None
 DEBUG_LEVEL = 0
 SUPPRESS_WARNINGS = False
+USE_CONFIG_PH = True
 
 # PHREEQC variables to be populated by parseConfig
 ELEMENTS = []
@@ -89,7 +91,7 @@ def parseConfig():
 
     :return: None
     """
-    global LOG_FILE_NAME, DB_PATH, DEBUG_LEVEL, SUPPRESS_WARNINGS
+    global LOG_FILE_NAME, DB_PATH, DEBUG_LEVEL, SUPPRESS_WARNINGS, USE_CONFIG_PH
     global ELEMENTS, PH, PE, REDOX, TEMP, CHARGE, EQ_OPTIONS
     global IN_VAR_LIST, RET_VAR_LIST
     # Parsing config file and sanitising configuration variables
@@ -134,6 +136,14 @@ def parseConfig():
             SUPPRESS_WARNINGS = False
     except NoOptionError:
         SUPPRESS_WARNINGS = False
+    try:
+        t = config.get("GoldQC", "use_Config_pH")
+        if t:
+            USE_CONFIG_PH = eval(t)
+            if not isinstance(USE_CONFIG_PH, bool):
+                USE_CONFIG_PH = True
+    except NoOptionError:
+        USE_CONFIG_PH = True
     try:
         PH = config.get("phreeqc", "pH")
         if not PH:
@@ -193,9 +203,10 @@ def InitialChecks():
     global LOG_FILE_NAME
     global PHREEQC
     global DEBUG_LEVEL
-    global DB_PATH, ELEMENTS, PHREEQC_SPECS, EQ_PHASES, TOTALS
+    global DB_PATH, ELEMENTS, PHREEQC_SPECS, EQ_PHASES, TOTALS, USE_CONFIG_PH
 
     debug_string = ''
+    # Loging initial start of log, also clears old log.
     with open(LOG_FILE_NAME, 'w') as Log:
         Log.write("Starting GoldQC.py script at %s.\n\n" % datetime.datetime.now().strftime("%x %H:%M"))
     if DEBUG_LEVEL:
@@ -209,7 +220,6 @@ def InitialChecks():
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write(debug_string)
         return 1
-
     try:
         PHREEQC.LoadDatabase(DB_PATH)
     except WindowsError as e:
@@ -218,17 +228,21 @@ def InitialChecks():
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write(debug_string)
         return 1
+
+    # checking for any element name changes from GoldSim to Phreeqc.
     for element in ELEMENTS:
         if element in ELEMENT_SYMBOLS:
             ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
+
+    # Handling the case of pH being specified in GoldSim
     if 'pH' in ELEMENTS:
         PHREEQC_SPECS = ('\ttemp\t\t%s\n\tpe\t\t\t%s\n\tredox\t\t%s\n' % (TEMP, PE, REDOX))
         TOTALS = "".join(['%s ' % s for s in ELEMENTS if s != 'pH'])
-
     else:
         PHREEQC_SPECS = ('\ttemp\t\t%s\n\tpH\t\t\t%s\n\tpe\t\t\t%s\n\tredox\t\t%s\n' % (TEMP, PH, PE, REDOX))
         TOTALS = "".join(['%s ' % s for s in ELEMENTS])
 
+    # Extracting Equilibrium phases
     EQ_PHASES = 'EQUILIBRIUM_PHASES\n%s' % "".join(['\t%s\t%s\t%s\n' % (e[0], e[1], e[2]) for e in EQ_OPTIONS])
 
     debug_string += "Successfully Started GoldQC.py script at %s.\n\n" % \
@@ -242,7 +256,10 @@ def PyModuleVersion():
     """
     Wrapper function that transfers the version specified in the Specific/
     Custom implementation module back to the dll.
-    
+
+    ****DO NOT REMOVE****
+    Required by GoldSim External element.
+
     :return:    Version number --- will be cast to a double later
     """
     return GOLDQC_VERSION
@@ -252,7 +269,10 @@ def CalcInputs():
     """
     Returns the number of elements as specified by the elements config.
     This should match the number of inputs from GoldSim.
-    
+
+    ****DO NOT REMOVE****
+    Required by GoldSim External element.
+
     :return:    Number of inputs expected. -1 is an error
     """
     return len(ELEMENTS)
@@ -262,6 +282,9 @@ def CalcOutputs():
     """
     Returns the number of elements as specified by the elements config.
     This should match the size of the vector GoldSim is expected to be returned.
+
+    ****DO NOT REMOVE****
+    Required by GoldSim External element.
 
     :return:    Number of outputs expected. -1 is an error
     """
@@ -273,6 +296,10 @@ def CustomCalculations(input_list, num_return):
     Handles conversion from GoldSim format to Python style list. The function then passes the input to
     MyCustomCalculations for processing to IPhreeqc format before being ran in PHREEQC and passed back
     with conversions from PHREEQC to Python to GoldSim.
+
+    ****DO NOT REMOVE****
+    Required by GoldSim External element.
+
 
     :param: input_list the list of floats which is the input array from GoldSim.
     :param: num_return the total number of indices to return in the list which goes back to CustomPython.pyx.
@@ -299,7 +326,7 @@ def CustomCalculations(input_list, num_return):
     ret_var_list = MyCustomCalculations(py_input_list)
     if not isinstance(ret_var_list, list):
         with open(LOG_FILE_NAME, 'a', 0) as Log:
-            Log.write("ERROR")
+            Log.write("ERROR: the input type from GoldSim was not a vector")
         return -1
     if len(ret_var_list) != num_output_vars:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
@@ -322,6 +349,9 @@ def CustomCalculations(input_list, num_return):
 
 def WrapUpStuff():
     """
+    ****DO NOT REMOVE****
+    Required by GoldSim External element.
+
     Required to end off the log file with completion time and any other useful information
     :return: None
     """
@@ -344,6 +374,9 @@ def WrapUpStuff():
 def PythonInitializationError():
     """
     Python function to write an error to the log file.
+
+    ****DO NOT REMOVE****
+    Required by GoldSim External element.
     """
     debug_string = str("Python did not initialize correctly.\n")
     debug_string += str("This is most likely due to an error in your Python code\n")
@@ -370,7 +403,7 @@ def MyCustomCalculations(input_list):
 
     # globals
     global LOG_FILE_NAME
-    global STEP, PHREEQC_SPECS, EQ_PHASES, CHARGE
+    global STEP, PHREEQC_SPECS, EQ_PHASES, CHARGE, USE_CONFIG_PH, PH
     global DEBUG_LEVEL
     global ERRORS
 
@@ -392,6 +425,9 @@ def MyCustomCalculations(input_list):
         items[CHARGE] = "%s\tcharge" % items[CHARGE]
     if CHARGE not in ELEMENTS and CHARGE:
         items.update({CHARGE: '0\tcharge'})
+    if 'pH' in ELEMENTS:
+        # Setting pH to be config specified or GoldSim specified with h+ conversion
+        items['pH'] = PH if USE_CONFIG_PH else -log10(items['pH'])
     input_string = 'SOLUTION %d\n\tunits\t\tmg/l\n\tdensity\t\t1\n\t-water\t\t1\n' \
                    '%s%s%sSELECTED_OUTPUT\n\t-water\t\ttrue\n\t-totals %s\nEND\n\n' % \
                    (STEP, PHREEQC_SPECS,
@@ -418,15 +454,14 @@ def MyCustomCalculations(input_list):
         headings = list(phreeqc_values[0])[-len(element_values)+1:]
         values = list(phreeqc_values[2])[-len(element_values)+1:]
         water = list(phreeqc_values[2])[-len(element_values)]
-        ph =  list(phreeqc_values[2])[-len(element_values) - 2]
-
+        ph = list(phreeqc_values[2])[-len(element_values) - 2]
+        ph = 10 ** -ph
     else:
         headings = list(phreeqc_values[0])[-len(element_values):]
         values = list(phreeqc_values[2])[-len(element_values):]
         water = list(phreeqc_values[2])[-len(element_values)-1]
         ph = list(phreeqc_values[2])[-len(element_values) - 3]
 
-    raw_values = list(values)
     # Converting mol/kgw to mg/l ONLY NEEDED IN TOTALS MODE
     i = 0
     while i < len(headings):
@@ -437,18 +472,20 @@ def MyCustomCalculations(input_list):
     # Formatting values into GoldSim required format
     return_list = list()
 
+    # Handling adding pH back into the correct spot in the returned array.
     if 'pH' in ELEMENTS:
         original_list = OrderedDict(zip(ELEMENTS, element_values))
-        phreq_list = OrderedDict(zip(headings, values))
+        phreeqc_list = OrderedDict(zip(headings, values))
         for key in original_list.keys():
-            if key in phreq_list.keys():
-                original_list[key] = phreq_list[key]
-            else: #Should be pH the only element not in phreeqc totals that is in the Orginal List.
+            if key in phreeqc_list.keys():
+                original_list[key] = phreeqc_list[key]
+            else:  # Should be pH the only element not in phreeqc totals that is in the Orginal List.
                 original_list[key] = ph
         return_list.append(original_list.values())
     else:
         return_list.append(values)
-    print return_list
+
+    # Writing debug information to the log file.
     if DEBUG_LEVEL:
         debug_string += "Output Values:\n"
         table = PrettyTable(["Element"] + ELEMENTS)
@@ -475,6 +512,7 @@ def process_input(input_string):
 
     from comtypes.client import CreateObject
 
+    # Making sure Iphreeqc is still running and hasn't been killed of during simulation
     if not PHREEQC:
         try:
             PHREEQC = CreateObject('IPhreeqcCOM.Object')
@@ -485,10 +523,11 @@ def process_input(input_string):
                 Log.write(str(e))
                 Log.write("Database is not connected or PHREEQC not running.\n")
         return None
-    # PHREEQC.OutputStringOn = True
+
     # noinspection PyBroadException
     try:
         PHREEQC.RunString(input_string)
+    # Running the input through Iphreeqc and catching any error that may be returned.
     except Exception:
         with open(LOG_FILE_NAME, 'a', 0) as Log:
             Log.write(str('Error at step %d: \n' % STEP))
@@ -496,7 +535,9 @@ def process_input(input_string):
             if phreeqc_error:
                 ERRORS = 1
                 Log.write(phreeqc_error)
-    warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim
+
+    #Logging any warnings from Iphreeqc to the log file if the user has not suppressed them
+    warning = PHREEQC.GetWarningString()  # TODO Investigate passing warning back to GoldSim issue #12
     if warning:
         WARNINGS = 1
         if not SUPPRESS_WARNINGS or DEBUG_LEVEL:
@@ -504,11 +545,9 @@ def process_input(input_string):
                 Log.write('Warning at step %d: \n' % STEP)
                 Log.write(warning)
     output = PHREEQC.GetSelectedOutputArray()
-    # with open("out.txt", 'a', 0) as debug:
-    #     debug.write(PHREEQC.GetOutputString().encode('utf8', 'replace'))
     return output
 
-
+#Only used to test if the all components needed to use GoldQC are installed.
 def main():
     status = InitialChecks()
     if status:
