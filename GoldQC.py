@@ -52,7 +52,7 @@ from prettytable import PrettyTable
 from Conversions import ELEMENT_SYMBOLS, MOLAR_MASS_LIST
 
 # Module level globals.
-GOLDQC_VERSION = 0.93
+GOLDQC_VERSION = 0.931
 PHREEQC = None
 STEP = 0
 ERRORS = 0
@@ -455,7 +455,7 @@ def MyCustomCalculations(input_list):
         values = list(phreeqc_values[2])[-len(element_values)+1:]
         water = list(phreeqc_values[2])[-len(element_values)]
         ph = list(phreeqc_values[2])[-len(element_values) - 2]
-        ph = 10 ** -ph
+        ph = 10 ** -ph if not USE_CONFIG_PH else ph
     else:
         headings = list(phreeqc_values[0])[-len(element_values):]
         values = list(phreeqc_values[2])[-len(element_values):]
@@ -547,7 +547,8 @@ def process_input(input_string):
     output = PHREEQC.GetSelectedOutputArray()
     return output
 
-#Only used to test if the all components needed to use GoldQC are installed.
+
+# Only used to test if the all components needed to use GoldQC are installed.
 def main():
     status = InitialChecks()
     if status:
