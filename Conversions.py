@@ -156,7 +156,7 @@ MOLAR_MASS_LIST = {
 ELEMENT_SYMBOLS: A lookup dictionary to convert common Element pairs from GoldSim to PHREEQC
 """
 ELEMENT_SYMBOLS = {
-    "S04": "S(6)",
+    "SO4": "S(6)",
     "H": "pH",
     "alk": "Alkalinity",
     "Alk": "Alkalinity",
