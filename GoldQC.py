@@ -230,9 +230,35 @@ def InitialChecks():
         return 1
 
     # checking for any element name changes from GoldSim to Phreeqc.
-    for element in ELEMENTS:
-        if element in ELEMENT_SYMBOLS:
-            ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
+    # Checking to make sure all elements are in the database file.
+    database_species = []
+    with open(DB_PATH, 'r') as database:
+        for num, line in enumerate(database, 1):
+            line = line.rstrip()
+            if line == "SOLUTION_MASTER_SPECIES":
+
+                #Skipping the next 3 lines (they are table headings.
+                for i in range(3):
+                    database.next()
+                #Extracting species list from database
+                for l in database:
+                    if l.startswith("# "):
+                        break
+                    else:
+                        l = l.split("\t")
+                        database_species.append(l[0])
+                break
+
+
+        for element in ELEMENTS:
+            if element in ELEMENT_SYMBOLS:
+                ELEMENTS[ELEMENTS.index(element)] = ELEMENT_SYMBOLS[element]
+                element = ELEMENT_SYMBOLS[element]
+            if element not in database_species and element is not "pH":
+                debug_string += "ERROR: " + element + " is not in the selected PHREEQC database"
+                with open(LOG_FILE_NAME, 'a') as log:
+                    log.write(debug_string)
+                exit(1)
 
     # Handling the case of pH being specified in GoldSim
     if 'pH' in ELEMENTS:
